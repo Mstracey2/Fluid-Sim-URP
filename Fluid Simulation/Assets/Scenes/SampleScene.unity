@@ -572,7 +572,7 @@ MonoBehaviour:
   particleMesh: {fileID: 2540817853737639666, guid: d2bcb9b63a067d643b56910fd449b51b,
     type: 3}
   particleRenderSize: 8
-  material: {fileID: 2100000, guid: e149084dbf866c3479e8e6f0f5ada93e, type: 2}
+  material: {fileID: 2100000, guid: dc5415964d9b57c449ff53ad984103c6, type: 2}
   shader: {fileID: 7200000, guid: 1f25c4104f31085458f299190f2241e5, type: 3}
   particles: []
   boundDamping: -0.3

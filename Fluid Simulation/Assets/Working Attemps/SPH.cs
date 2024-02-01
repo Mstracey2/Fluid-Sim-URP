@@ -19,6 +19,7 @@ public class SPH : MonoBehaviour
 {
     [Header("Setup")]
     public float gravity;
+    public float boundDamping = 0.2f;
     public bool showSpheres = true;
     public Vector3Int numToSpawn = new Vector3Int(10, 10, 10);
     private int totalParticles { get { return numToSpawn.x * numToSpawn.y * numToSpawn.z; } }
@@ -37,17 +38,21 @@ public class SPH : MonoBehaviour
     public Particle[] particles;
 
     [Header("Fluid Constants")]
-    public float boundDamping = -0.3f;
-    public float viscosity = -0.0003f;
     public float particleMass = 1f;
-    public float gasConstant = 2f;
-    public float restingDensity = 1f;
     public float timestep = -0.007f;
+    public float particleSmoothingRadius = 0.2f;
+    public float densityTarget;
+    public float pressureForce;
+
 
     private ComputeBuffer _argsBuffer;
     private ComputeBuffer _particleBuffer;
+
+    //Kernals
     private int integrateKernel;
     private int forceKernel;
+    private int densityKernal;
+    private int pressureKernal;
 
     private static readonly int SizeProperty = Shader.PropertyToID("_size");
     private static readonly int ParticelsBufferProperty = Shader.PropertyToID("_particlesBuffer");
@@ -68,18 +73,17 @@ public class SPH : MonoBehaviour
         _particleBuffer = new ComputeBuffer(totalParticles, 44);
         _particleBuffer.SetData(particles);
         FindKernelsAndSetBuffers();
-        SetShaderVariables();
+        SetComputeVariables();
     }
 
     private void FixedUpdate()
     {
-        shader.Dispatch(integrateKernel, totalParticles / 100, 1, 1);
-        shader.Dispatch(forceKernel, totalParticles / 100, 1, 1);
+        
     }
 
     private void Update()
     {
-        SetShaderVariables();
+        SetComputeVariables();
         material.SetFloat(SizeProperty, particleRenderSize);
         material.SetBuffer(ParticelsBufferProperty, _particleBuffer);
         if (showSpheres)
@@ -89,24 +93,27 @@ public class SPH : MonoBehaviour
             
     }
 
-    private void SetShaderVariables()
+    private void SimulateParticles()
+    {
+        shader.Dispatch(integrateKernel, totalParticles / 100, 1, 1);
+        shader.Dispatch(forceKernel, totalParticles / 100, 1, 1);
+        shader.Dispatch(forceKernel, totalParticles / 100, 1, 1);
+        shader.Dispatch(forceKernel, totalParticles / 100, 1, 1);
+    }
+
+    private void SetComputeVariables()
     {
         shader.SetVector("boxSize", boxSize);
         shader.SetFloat("timestep", timestep);
         shader.SetInt("particleLength", totalParticles);
         shader.SetFloat("particleMass", particleMass);
-        shader.SetFloat("viscosity", viscosity);
-        shader.SetFloat("gasConstant", gasConstant);
-        shader.SetFloat("restDensity", restingDensity);
-        shader.SetFloat("boundDamping", boundDamping);
         shader.SetFloat("pi", Mathf.PI);
         shader.SetVector("boxSize", boxSize);
         shader.SetFloat("gravity", gravity);
         shader.SetFloat("radius", particleRadius);
-        //shader.SetFloat("radius2", particleRadius * particleRadius);
-        //shader.SetFloat("radius3", particleRadius * particleRadius * particleRadius);
-        //shader.SetFloat("radius4", particleRadius * particleRadius * particleRadius * particleRadius);
-        //shader.SetFloat("radius5", particleRadius * particleRadius * particleRadius * particleRadius * particleRadius);
+        shader.SetFloat("boundDamping", boundDamping);
+        shader.SetFloat("densityTarget", densityTarget);
+        shader.SetFloat("pressureForce", pressureForce);
     }
 
     private void SpawnParticlesInBox()
@@ -136,6 +143,7 @@ public class SPH : MonoBehaviour
     {
         integrateKernel = shader.FindKernel("Integrate");
         forceKernel = shader.FindKernel("ApplyComputeForces");
+
         shader.SetBuffer(integrateKernel, "_particles", _particleBuffer);
         shader.SetBuffer(forceKernel, "_particles", _particleBuffer);
 
