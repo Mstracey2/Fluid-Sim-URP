@@ -579,8 +579,8 @@ MonoBehaviour:
   timestep: -0.007
   particleSmoothingRadius: 0.2
   densityTarget: 630
-  pressureForce: 0
-  disNum: 0.12
+  pressureForce: -118
+  disNum: -120
 --- !u!4 &1392038047
 Transform:
   m_ObjectHideFlags: 0
