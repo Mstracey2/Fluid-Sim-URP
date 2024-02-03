@@ -4,7 +4,7 @@ using UnityEngine;
 using System.Runtime.InteropServices;
 
 [System.Serializable]
-[StructLayout(LayoutKind.Sequential, Size = 44)]
+[StructLayout(LayoutKind.Sequential, Size = 56)]
 public struct Particle
 {
     public float pressure;
@@ -12,6 +12,7 @@ public struct Particle
     public Vector3 currentForce;
     public Vector3 velocity;
     public Vector3 position;
+    public Vector3 positionPrediction;
 }
 
 
@@ -43,15 +44,16 @@ public class SPH : MonoBehaviour
     public float particleSmoothingRadius = 0.2f;
     public float densityTarget;
     public float pressureForce;
-
+    public float disNum;
 
     private ComputeBuffer _argsBuffer;
     private ComputeBuffer _particleBuffer;
 
     //Kernals
     private int integrateKernel;
-    private int densityKernal;
-    private int pressureKernal;
+    private int densityKernel;
+    private int pressureKernel;
+    private int forceKernel;
 
     private static readonly int SizeProperty = Shader.PropertyToID("_size");
     private static readonly int ParticelsBufferProperty = Shader.PropertyToID("_particlesBuffer");
@@ -69,7 +71,7 @@ public class SPH : MonoBehaviour
         };
         _argsBuffer = new ComputeBuffer(1, args.Length * sizeof(uint), ComputeBufferType.IndirectArguments);
         _argsBuffer.SetData(args);
-        _particleBuffer = new ComputeBuffer(totalParticles, 44);
+        _particleBuffer = new ComputeBuffer(totalParticles, 56);
         _particleBuffer.SetData(particles);
         FindKernelsAndSetBuffers();
         SetComputeVariables();
@@ -78,6 +80,7 @@ public class SPH : MonoBehaviour
     private void FixedUpdate()
     {
         SimulateParticles();
+        
     }
 
     private void Update()
@@ -95,8 +98,9 @@ public class SPH : MonoBehaviour
     private void SimulateParticles()
     {
         shader.Dispatch(integrateKernel, totalParticles / 100, 1, 1);
-        shader.Dispatch(densityKernal, totalParticles / 100, 1, 1);
-        shader.Dispatch(pressureKernal, totalParticles / 100, 1, 1);
+        shader.Dispatch(densityKernel, totalParticles / 100, 1, 1);
+        shader.Dispatch(pressureKernel, totalParticles / 100, 1, 1);
+        shader.Dispatch(forceKernel, totalParticles / 100, 1, 1);
     }
 
     private void SetComputeVariables()
@@ -112,6 +116,7 @@ public class SPH : MonoBehaviour
         shader.SetFloat("boundDamping", boundDamping);
         shader.SetFloat("densityTarget", densityTarget);
         shader.SetFloat("pressureMulti", pressureForce);
+        shader.SetFloat("disNum", disNum);
     }
 
     private void SpawnParticlesInBox()
@@ -140,12 +145,14 @@ public class SPH : MonoBehaviour
     private void FindKernelsAndSetBuffers()
     {
         integrateKernel = shader.FindKernel("Integrate");
-        densityKernal = shader.FindKernel("CalculateDensity");
-        pressureKernal = shader.FindKernel("CalculatePressure");
+        densityKernel = shader.FindKernel("CalculateDensity");
+        pressureKernel = shader.FindKernel("CalculatePressure");
+        forceKernel = shader.FindKernel("ApplyForces");
 
         shader.SetBuffer(integrateKernel, "_particles", _particleBuffer);
-        shader.SetBuffer(densityKernal, "_particles", _particleBuffer);
-        shader.SetBuffer(pressureKernal, "_particles", _particleBuffer);
+        shader.SetBuffer(densityKernel, "_particles", _particleBuffer);
+        shader.SetBuffer(pressureKernel, "_particles", _particleBuffer);
+        shader.SetBuffer(forceKernel, "_particles", _particleBuffer);
 
     }
 

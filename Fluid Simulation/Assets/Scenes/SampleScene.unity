@@ -566,13 +566,12 @@ MonoBehaviour:
   boundDamping: -0.3
   showSpheres: 1
   numToSpawn: {x: 10, y: 10, z: 10}
-  boxSize: {x: 4.17, y: 7.08, z: 10.09}
-  spawnCenter: {x: 0, y: 0.82, z: 0}
-  particleRadius: 0.1
+  boxSize: {x: 4.11, y: 4.89, z: 7.49}
+  spawnCenter: {x: -1.56, y: -1.3, z: 0}
+  particleRadius: 0.2
   spawnJitter: 0.2
-  particleMesh: {fileID: 2540817853737639666, guid: d2bcb9b63a067d643b56910fd449b51b,
-    type: 3}
-  particleRenderSize: 8
+  particleMesh: {fileID: 10207, guid: 0000000000000000e000000000000000, type: 0}
+  particleRenderSize: 0.04
   material: {fileID: 2100000, guid: dc5415964d9b57c449ff53ad984103c6, type: 2}
   shader: {fileID: 7200000, guid: 1f25c4104f31085458f299190f2241e5, type: 3}
   particles: []
@@ -580,7 +579,8 @@ MonoBehaviour:
   timestep: -0.007
   particleSmoothingRadius: 0.2
   densityTarget: 630
-  pressureForce: 288
+  pressureForce: 0
+  disNum: 0.12
 --- !u!4 &1392038047
 Transform:
   m_ObjectHideFlags: 0

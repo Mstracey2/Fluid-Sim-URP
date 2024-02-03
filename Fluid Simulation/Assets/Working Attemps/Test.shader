@@ -12,26 +12,11 @@ Shader "Unlit/Test"
 
 
                 HLSLINCLUDE
-                #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
-                // -------------------------------------
-                #pragma target 2.0
-                // -------------------------------------
+                
                 // Shader Stages
                 #pragma vertex UnlitPassVertex
                 #pragma fragment UnlitPassFragment
                 // -------------------------------------
-                // Material Keywords
-                #pragma shader_feature_local_fragment _SURFACE_TYPE_TRANSPARENT
-                #pragma shader_feature_local_fragment _ALPHATEST_ON
-                #pragma shader_feature_local_fragment _ALPHAMODULATE_ON
-                // -------------------------------------
-                // Unity defined keywords
-                #pragma multi_compile_fog
-                #pragma multi_compile_fragment _ _SCREEN_SPACE_OCCLUSION
-                #pragma multi_compile_fragment _ _DBUFFER_MRT1 _DBUFFER_MRT2 _DBUFFER_MRT3
-                #pragma multi_compile _ DEBUG_DISPLAY
-                #pragma multi_compile_fragment _ LOD_FADE_CROSSFADE
-                #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/RenderingLayers.hlsl"
                 //--------------------------------------
                 // GPU Instancing
                 #pragma multi_compile_instancing
@@ -39,6 +24,7 @@ Shader "Unlit/Test"
                 #pragma instancing_options procedural:setup
                 // -------------------------------------
                 // Includes
+                #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
                 #include "Packages/com.unity.render-pipelines.universal/Shaders/UnlitInput.hlsl"
                 #include "Packages/com.unity.render-pipelines.universal/Shaders/UnlitForwardPass.hlsl"
 
@@ -54,6 +40,7 @@ Shader "Unlit/Test"
                 float3 currentForce;
                 float3 velocity;
                 float3 position;
+                float3 positionPrediction;
             };
 
             struct VertexInput

@@ -2,6 +2,7 @@
 #pragma kernel Integrate
 #pragma kernel CalculateDensity
 #pragma kernel CalculatePressure
+#pragma kernel ApplyForces
 
 struct Particle {
 	float pressure;
@@ -9,6 +10,7 @@ struct Particle {
 	float3 currentForce;
 	float3 velocity;
 	float3 position;
+    float3 positionPrediction;
 };
 
 RWStructuredBuffer<Particle> _particles;
@@ -22,17 +24,14 @@ float timestep;
 float3 boxSize;
 float densityTarget;
 float pressureMulti;
+float disNum;
 
 
 [numthreads(100,1,1)]
 void Integrate(uint3 id: SV_DISPATCHTHREADID) 
 {
-    if (id.x >= particleLength) return;
-    
-    //_particles[id.x].currentForce = float3(0, gravity * particleMass, 0) - _particles[id.x].pressure * timestep;
-	float3 vel = _particles[id.x].velocity + _particles[id.x].pressure;
-	_particles[id.x].position += vel * timestep;
-
+        if (id.x >= particleLength) return;
+        float3 vel = _particles[id.x].velocity + ((_particles[id.x].currentForce / particleMass) * timestep);
 		float3 topRight = boxSize / 2;
 		float3 bottomLeft = -boxSize / 2;
 
@@ -60,8 +59,9 @@ void Integrate(uint3 id: SV_DISPATCHTHREADID)
 			vel.z *= boundDamping;
 			_particles[id.x].position.z = topRight.z - radius;
 		}
-
+    
 		_particles[id.x].velocity = vel;
+    _particles[id.x].positionPrediction = _particles[id.x].position + _particles[id.x].velocity * 1 / disNum;
 }
 
 
@@ -93,21 +93,29 @@ float GetPressureFromDensity(float density)
     return (density - densityTarget) * pressureMulti;
 }
 
+float GetSharedPressure(float denA, float denB)
+{
+    float pressure1 = GetPressureFromDensity(denA);
+    float pressure2 = GetPressureFromDensity(denB);
+    return (pressure1, pressure2) / 2;
+
+}
+
 // Calculates the density of the particle, does so by getting the distance between particles, and the density is affected via the mass and gradient influence.
 [numthreads(100, 1, 1)]
 void CalculateDensity(uint id : SV_DispatchThreadID)
 {
     if (id.x >= particleLength) return;
-    float3 particlePos = _particles[id.x].position;
+    float3 particlePos = _particles[id.x].positionPrediction;
     float dens = 0;
     for (int i = 0; i < particleLength; i++)
     {
         if (id.x != i) continue;
-            float3 particleDiff = (particlePos - _particles[i].position);
-            float particleOffset = dot(particleDiff, particleDiff);
-            float dist = sqrt(particleOffset);
-            float gradientInfl = SmoothingKernal(dist, radius);
-            dens += gradientInfl * particleMass;
+        float3 particleDiff = (particlePos - _particles[i].positionPrediction);
+        float particleOffset = dot(particleDiff, particleDiff);
+        float dist = sqrt(particleOffset);
+        float gradientInfl = SmoothingKernal(dist, radius);
+        dens += gradientInfl * particleMass;
     }
     _particles[id.x].density = dens;
 	
@@ -118,23 +126,32 @@ void CalculateDensity(uint id : SV_DispatchThreadID)
 void CalculatePressure(uint id : SV_DispatchThreadID)
 {
     if (id.x >= particleLength) return;
-    float3 particlePos = _particles[id.x].position;
+    float3 particlePos = _particles[id.x].positionPrediction;
     float density = _particles[id.x].density;
-    float pressure = GetPressureFromDensity(density);
     float3 pressureForce = 0;
     for (int i = 0; i < particleLength; i++)
     {
         if (id.x == i) continue;
-            float3 particleOffset = (_particles[i].position - particlePos);
-            float partDis = dot(particleOffset, particleOffset);
-            float dist = sqrt(partDis);
-            float gradientInfl = DerivativeKernal(dist, radius);
-            float3 dir = dist > 0 ? particleOffset / dist : float3(0, 1, 0);
-            pressureForce += dir * gradientInfl * pressure / density;
+        float3 particleOffset = (_particles[i].positionPrediction - particlePos);
+        float partDis = dot(particleOffset, particleOffset);
+        float dist = sqrt(partDis);
+        
+        float gradientInfl = DerivativeKernal(dist, radius);
+        float3 dir = dist > 0 ? particleOffset / dist : float3(0, 1, 0);
+        pressureForce += dir * gradientInfl * GetSharedPressure(_particles[id.x].density, _particles[i].density) / density;
 
     }
     float3 acceleration = pressureForce / density;
-    _particles[id.x].pressure += acceleration * timestep ;
+    _particles[id.x].velocity += acceleration * timestep;
+}
+
+
+[numthreads(100, 1, 1)]
+void ApplyForces(uint id : SV_DispatchThreadID)
+{
+    _particles[id.x].position += _particles[id.x].velocity * timestep;
+    
+    _particles[id.x].currentForce = float3(0, gravity * particleMass, 0); //+ _particles[id.x].pressure;
 }
 
 
