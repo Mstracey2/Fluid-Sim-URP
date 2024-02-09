@@ -2,6 +2,7 @@
 #pragma kernel Integrate
 #pragma kernel CalculateDensity
 #pragma kernel CalculatePressure
+//#pragma kernel CalculateViscosity
 #pragma kernel ApplyForces
 
 struct Particle {
@@ -25,6 +26,7 @@ float3 boxSize;
 float densityTarget;
 float pressureMulti;
 float disNum;
+float viscosityMulti;
 
 
 [numthreads(100,1,1)]
@@ -34,7 +36,10 @@ void Integrate(uint3 id: SV_DISPATCHTHREADID)
         float3 vel = _particles[id.x].velocity + ((_particles[id.x].currentForce / particleMass) * timestep);
 		float3 topRight = boxSize / 2;
 		float3 bottomLeft = -boxSize / 2;
-
+        
+        /*
+        below is the functionality to produce collision with the bounds of the box grid    
+        */
 		if (_particles[id.x].position.x - radius < bottomLeft.x) {
 			vel.x *= boundDamping;
 			_particles[id.x].position.x = bottomLeft.x + radius;
@@ -64,25 +69,42 @@ void Integrate(uint3 id: SV_DISPATCHTHREADID)
     _particles[id.x].positionPrediction = _particles[id.x].position + _particles[id.x].velocity * 1 / disNum;
 }
 
-
-float SmoothingKernal(float dst, float radius)
+//This Kernal type is used for the calculation of density. Theoretically, the peak is a spiked top with a harsh decline
+float DensityKernal_SpikedGradient(float dist)
 {
-    if (dst < radius)
+    if (dist < radius)
     {
         float scale = 15 / (2 * pi * pow(radius, 5));
-        float v = radius - dst;
-        return v * v * scale;
+        float vel = radius - dist;
+        return vel * vel * scale;
     }
     return 0;
 }
 
-float DerivativeKernal(float dst, float radius)
+/*
+    This gradient type is used for the calculation of pressure. It has the same gradient pattern as the density, but we use this instead.
+    The reasoning to why this Kernal makes the sim work and the regular density kernal doesn't, for this case, the distance between the particle reduces the value of the gradient of the kernel becomes zero making the pressure force zero.
+    To avoid this, we use a modified kernal (a SPH Approximation) which in turn, gives us a modified pressure that is proportional to the density deviation. More can be found here: https://www.diva-portal.org/smash/get/diva2:573583/FULLTEXT01.pdf
+*/
+float DerivativeDensityKernal_DerivativeSpikedGradient(float dist)
 {
-    if (dst <= radius)
+    if (dist <= radius)
     {
         float scale = 15 / (pow(radius, 5) * pi);
-        float v = radius - dst;
-        return -v * scale;
+        float vel = radius - dist;
+        return vel * scale;
+    }
+    return 0;
+}
+
+// similar to the density kernal but we square the values more to recieve a more smoothed and rounded peak on the gradient
+float ViscosityKernal_RoundedGradient(float dist)
+{
+    if (dist < radius)
+    {
+        float scale = 315 / (64 * pi * pow(abs(radius), 9));
+        float vel = radius * radius - dist * dist;
+        return vel * vel * vel * scale;
     }
     return 0;
 }
@@ -93,6 +115,11 @@ float GetPressureFromDensity(float density)
     return (density - densityTarget) * pressureMulti;
 }
 
+/*
+    According to newtons third law:
+    for every action (force) in nature there is an equal and opposite reaction.
+    To do this, we must calculate a shared equal pressure by getting the mean avarage of both pressures.
+*/
 float GetSharedPressure(float denA, float denB)
 {
     float pressure1 = GetPressureFromDensity(denA);
@@ -110,18 +137,18 @@ void CalculateDensity(uint id : SV_DispatchThreadID)
     float dens = 0;
     for (int i = 0; i < particleLength; i++)
     {
-        if (id.x != i) continue;
-        float3 particleDiff = (particlePos - _particles[i].positionPrediction);
-        float particleOffset = dot(particleDiff, particleDiff);
+        if (id.x == i) continue; // SIM DOES NOT WORK WITHOUT THIS AS IT WILL BREAK DUE TO INCLUDING ITSELF IN THE LOOP, RETURNING 0;
+        float3 particleDist = (particlePos - _particles[i].positionPrediction);
+        float particleOffset = dot(particleDist, particleDist);
         float dist = sqrt(particleOffset);
-        float gradientInfl = SmoothingKernal(dist, radius);
+        float gradientInfl = DensityKernal_SpikedGradient(dist);
         dens += gradientInfl * particleMass;
     }
     _particles[id.x].density = dens;
 	
 }
 
-// calculates particle pressure, REQUIRES THE CALCULATION OF DENSITY TO KNOW HOW MUCH PRESSURE THE PARTICLE IS UNDER
+// calculates particle pressure, REQUIRES THE CALCULATION OF DENSITY TO KNOW HOW MUCH PRESSURE FORCE IS TO BE APPLIED
 [numthreads(100, 1, 1)]
 void CalculatePressure(uint id : SV_DispatchThreadID)
 {
@@ -131,12 +158,12 @@ void CalculatePressure(uint id : SV_DispatchThreadID)
     float3 pressureForce = 0;
     for (int i = 0; i < particleLength; i++)
     {
-        if (id.x == i) continue;
+        if (id.x == i) continue; // SIM DOES NOT WORK WITHOUT THIS AS IT WILL BREAK DUE TO INCLUDING ITSELF IN THE LOOP, RETURNING 0;
         float3 particleOffset = (_particles[i].positionPrediction - particlePos);
         float partDis = dot(particleOffset, particleOffset);
         float dist = sqrt(partDis);
         
-        float gradientInfl = DerivativeKernal(dist, radius);
+        float gradientInfl = DerivativeDensityKernal_DerivativeSpikedGradient(dist);
         float3 dir = dist > 0 ? particleOffset / dist : float3(0, 1, 0);
         pressureForce += dir * gradientInfl * GetSharedPressure(_particles[id.x].density, _particles[i].density) / density;
 
@@ -146,12 +173,34 @@ void CalculatePressure(uint id : SV_DispatchThreadID)
 }
 
 
+//[numthreads(100, 1, 1)]
+//void CalculateViscosity(uint id : SV_DispatchThreadID)
+//{
+//    if (id.x >= particleLength)return;
+    
+//    float3 viscosityForce = 0;
+//    float3 particlePos = _particles[id.x].positionPrediction;
+//    float3 currentVel = _particles[id.x].velocity;
+//    for (int i = 0; i < particleLength; i++)
+//    {
+//        if (id.x == i) continue; // SIM DOES NOT WORK WITHOUT THIS AS IT WILL BREAK DUE TO INCLUDING ITSELF IN THE LOOP, RETURNING 0;
+//        float3 particleOffset = (_particles[i].positionPrediction - particlePos);
+//        float partDis = dot(particleOffset, particleOffset);
+//        float dist = sqrt(partDis);
+//        float gradientInfl = ViscosityKernal_RoundedGradient(dist);
+//        viscosityForce += (_particles[i].velocity - currentVel) * gradientInfl;
+//    }
+    
+//    _particles[i].velocity += viscosityForce * viscosityMulti * timestep;
+
+//}
+
+
+
 [numthreads(100, 1, 1)]
 void ApplyForces(uint id : SV_DispatchThreadID)
 {
     _particles[id.x].position += _particles[id.x].velocity * timestep;
-    
-    _particles[id.x].currentForce = float3(0, gravity * particleMass, 0); //+ _particles[id.x].pressure;
+    _particles[id.x].currentForce = float3(0, gravity * particleMass, 0);
+
 }
-
-

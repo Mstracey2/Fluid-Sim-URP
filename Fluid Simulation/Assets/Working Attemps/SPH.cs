@@ -41,7 +41,7 @@ public class SPH : MonoBehaviour
     [Header("Fluid Constants")]
     public float particleMass = 1f;
     public float timestep = -0.007f;
-    public float particleSmoothingRadius = 0.2f;
+    public float viscosity;
     public float densityTarget;
     public float pressureForce;
     public float disNum;
@@ -54,6 +54,7 @@ public class SPH : MonoBehaviour
     private int densityKernel;
     private int pressureKernel;
     private int forceKernel;
+    private int viscosityKernel;
 
     private static readonly int SizeProperty = Shader.PropertyToID("_size");
     private static readonly int ParticelsBufferProperty = Shader.PropertyToID("_particlesBuffer");
@@ -100,7 +101,9 @@ public class SPH : MonoBehaviour
         shader.Dispatch(integrateKernel, totalParticles / 100, 1, 1);
         shader.Dispatch(densityKernel, totalParticles / 100, 1, 1);
         shader.Dispatch(pressureKernel, totalParticles / 100, 1, 1);
+        //shader.Dispatch(viscosityKernel, totalParticles / 100, 1, 1);
         shader.Dispatch(forceKernel, totalParticles / 100, 1, 1);
+
     }
 
     private void SetComputeVariables()
@@ -117,6 +120,7 @@ public class SPH : MonoBehaviour
         shader.SetFloat("densityTarget", densityTarget);
         shader.SetFloat("pressureMulti", pressureForce);
         shader.SetFloat("disNum", disNum);
+        shader.SetFloat("viscosityMulti", viscosity);
     }
 
     private void SpawnParticlesInBox()
@@ -148,11 +152,13 @@ public class SPH : MonoBehaviour
         densityKernel = shader.FindKernel("CalculateDensity");
         pressureKernel = shader.FindKernel("CalculatePressure");
         forceKernel = shader.FindKernel("ApplyForces");
+       // viscosityKernel = shader.FindKernel("CalculateViscosity");
 
         shader.SetBuffer(integrateKernel, "_particles", _particleBuffer);
         shader.SetBuffer(densityKernel, "_particles", _particleBuffer);
         shader.SetBuffer(pressureKernel, "_particles", _particleBuffer);
         shader.SetBuffer(forceKernel, "_particles", _particleBuffer);
+        //shader.SetBuffer(viscosityKernel, "_particles", _particleBuffer);
 
     }
 
