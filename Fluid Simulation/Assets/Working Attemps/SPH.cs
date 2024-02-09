@@ -41,10 +41,10 @@ public class SPH : MonoBehaviour
     [Header("Fluid Constants")]
     public float particleMass = 1f;
     public float timestep = -0.007f;
-    public float particleSmoothingRadius = 0.2f;
     public float densityTarget;
     public float pressureForce;
     public float disNum;
+    public float viscosity;
 
     private ComputeBuffer _argsBuffer;
     private ComputeBuffer _particleBuffer;
@@ -54,6 +54,7 @@ public class SPH : MonoBehaviour
     private int densityKernel;
     private int pressureKernel;
     private int forceKernel;
+    private int viscosityKernel;
 
     private static readonly int SizeProperty = Shader.PropertyToID("_size");
     private static readonly int ParticelsBufferProperty = Shader.PropertyToID("_particlesBuffer");
@@ -117,6 +118,7 @@ public class SPH : MonoBehaviour
         shader.SetFloat("densityTarget", densityTarget);
         shader.SetFloat("pressureMulti", pressureForce);
         shader.SetFloat("disNum", disNum);
+        shader.SetFloat("viscosityMulti", viscosity);
     }
 
     private void SpawnParticlesInBox()
@@ -147,13 +149,14 @@ public class SPH : MonoBehaviour
         integrateKernel = shader.FindKernel("Integrate");
         densityKernel = shader.FindKernel("CalculateDensity");
         pressureKernel = shader.FindKernel("CalculatePressure");
+        viscosityKernel = shader.FindKernel("CalculateViscosity");
         forceKernel = shader.FindKernel("ApplyForces");
 
         shader.SetBuffer(integrateKernel, "_particles", _particleBuffer);
         shader.SetBuffer(densityKernel, "_particles", _particleBuffer);
         shader.SetBuffer(pressureKernel, "_particles", _particleBuffer);
         shader.SetBuffer(forceKernel, "_particles", _particleBuffer);
-
+        shader.SetBuffer(viscosityKernel, "_particles", _particleBuffer);
     }
 
     private void OnDrawGizmos()

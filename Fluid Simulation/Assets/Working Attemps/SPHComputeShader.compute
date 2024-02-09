@@ -25,6 +25,7 @@ float timestep;
 float3 boxSize;
 float densityTarget;
 float pressureMulti;
+float viscosityMulti;
 float disNum;
 
 
@@ -198,7 +199,7 @@ void CalculateViscosity(uint id : SV_DispatchThreadID)
         viscosityForce += (_particles[i].velocity - currentVel) * gradientInfl;
     }
     
-    _particles[i].velocity += viscosityForce * viscosityForce * timestep;
+    _particles[i].velocity += viscosityForce * viscosityMulti * timestep;
 
 }
 
