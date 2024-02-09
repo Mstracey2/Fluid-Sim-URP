@@ -2,6 +2,7 @@
 #pragma kernel Integrate
 #pragma kernel CalculateDensity
 #pragma kernel CalculatePressure
+#pragma kernel CalculateViscosity
 #pragma kernel ApplyForces
 
 struct Particle {
@@ -178,27 +179,28 @@ void CalculatePressure(uint id : SV_DispatchThreadID)
 }
 
 
-//[numthreads(100, 1, 1)]
-//void CalculateViscosity(uint id : SV_DispatchThreadID)
-//{
-//    if (id.x >= particleLength)return;
+[numthreads(100, 1, 1)]
+void CalculateViscosity(uint id : SV_DispatchThreadID)
+{
+    if (id.x >= particleLength)
+        return;
     
-//    float3 viscosityForce = 0;
-//    float3 particlePos = _particles[id.x].positionPrediction;
-//    float3 currentVel = _particles[id.x].velocity;
-//    for (int i = 0; i < particleLength; i++)
-//    {
-//        if (id.x == i) continue; // SIM DOES NOT WORK WITHOUT THIS AS IT WILL BREAK DUE TO INCLUDING ITSELF IN THE LOOP, RETURNING 0;
-//        float3 particleOffset = (_particles[i].positionPrediction - particlePos);
-//        float partDis = dot(particleOffset, particleOffset);
-//        float dist = sqrt(partDis);
-//        float gradientInfl = ViscosityKernal_RoundedGradient(dist);
-//        viscosityForce += (_particles[i].velocity - currentVel) * gradientInfl;
-//    }
+    float3 viscosityForce = 0;
+    float3 particlePos = _particles[id.x].positionPrediction;
+    float3 currentVel = _particles[id.x].velocity;
+    for (int i = 0; i < particleLength; i++)
+    {
+        if (id.x == i) continue; // SIM DOES NOT WORK WITHOUT THIS AS IT WILL BREAK DUE TO INCLUDING ITSELF IN THE LOOP, RETURNING 0;
+        float3 particleOffset = (_particles[i].positionPrediction - particlePos);
+        float partDis = dot(particleOffset, particleOffset);
+        float dist = sqrt(partDis);
+        float gradientInfl = ViscosityKernal_RoundedGradient(dist);
+        viscosityForce += (_particles[i].velocity - currentVel) * gradientInfl;
+    }
     
-//    _particles[i].velocity += viscosityForce * viscosityMulti * timestep;
+    _particles[i].velocity += viscosityForce * viscosityForce * timestep;
 
-//}
+}
 
 [numthreads(100, 1, 1)]
 void ApplyForces(uint id : SV_DispatchThreadID)
