@@ -4,12 +4,12 @@ using UnityEngine;
 using System.Runtime.InteropServices;
 
 [System.Serializable]
-[StructLayout(LayoutKind.Sequential, Size = 56)]
+[StructLayout(LayoutKind.Sequential, Size = 68)]
 public struct Particle
 {
-    public float pressure;
-    public float density;
-    public Vector3 currentForce;
+    public Vector3 pressure;
+    public Vector2 density;
+    public Vector3 external;
     public Vector3 velocity;
     public Vector3 position;
     public Vector3 positionPrediction;
@@ -22,12 +22,15 @@ public class SPH : MonoBehaviour
     public float gravity;
     public float boundDamping = 0.2f;
     public bool showSpheres = true;
+    public bool fixedTimestep;
     public Vector3Int numToSpawn = new Vector3Int(10, 10, 10);
     private int totalParticles { get { return numToSpawn.x * numToSpawn.y * numToSpawn.z; } }
     public Vector3 boxSize = new Vector3(4, 10, 3);
     public Vector3 spawnCenter;
     public float particleRadius = 0.1f;
     public float spawnJitter = 0.2f;
+    public float timestep = -0.007f;
+    public int numOfParticleCalc;
 
     [Header("Particle Rendering")]
     public Mesh particleMesh;
@@ -40,15 +43,15 @@ public class SPH : MonoBehaviour
 
     [Header("Fluid Constants")]
     public float particleMass = 1f;
-    public float timestep = -0.007f;
+    
     public float densityTarget;
     public float pressureForce;
+    public float nearPressureForce;
     public float disNum;
     public float viscosity;
-
     private ComputeBuffer _argsBuffer;
     private ComputeBuffer _particleBuffer;
-
+    public ParticleDisplay pDisplay;
     //Kernals
     private int integrateKernel;
     private int densityKernel;
@@ -72,23 +75,24 @@ public class SPH : MonoBehaviour
         };
         _argsBuffer = new ComputeBuffer(1, args.Length * sizeof(uint), ComputeBufferType.IndirectArguments);
         _argsBuffer.SetData(args);
-        _particleBuffer = new ComputeBuffer(totalParticles, 56);
+        _particleBuffer = new ComputeBuffer(totalParticles, 68);
         _particleBuffer.SetData(particles);
         FindKernelsAndSetBuffers();
-        SetComputeVariables();
     }
 
     private void FixedUpdate()
     {
-        SimulateParticles();
-        
+        if (fixedTimestep)
+        {
+            SimulateParticles(Time.fixedDeltaTime);
+        }
     }
 
     private void Update()
     {
-        SetComputeVariables();
         material.SetFloat(SizeProperty, particleRenderSize);
         material.SetBuffer(ParticelsBufferProperty, _particleBuffer);
+        //pDisplay.ProduceGradientColour(material);
         if (showSpheres)
         {
             Graphics.DrawMeshInstancedIndirect(particleMesh, 0, material, new Bounds(Vector3.zero, boxSize), _argsBuffer, castShadows: UnityEngine.Rendering.ShadowCastingMode.Off);
@@ -96,18 +100,22 @@ public class SPH : MonoBehaviour
             
     }
 
-    private void SimulateParticles()
+    private void SimulateParticles(float frames)
     {
+        float timeStepper = frames / numOfParticleCalc * timestep;
+        SetComputeVariables(timeStepper);
+
         shader.Dispatch(integrateKernel, totalParticles / 100, 1, 1);
         shader.Dispatch(densityKernel, totalParticles / 100, 1, 1);
         shader.Dispatch(pressureKernel, totalParticles / 100, 1, 1);
+        shader.Dispatch(viscosityKernel, totalParticles / 100, 1, 1);
         shader.Dispatch(forceKernel, totalParticles / 100, 1, 1);
     }
 
-    private void SetComputeVariables()
+    private void SetComputeVariables(float time)
     {
         shader.SetVector("boxSize", boxSize);
-        shader.SetFloat("timestep", timestep);
+        shader.SetFloat("timestep", time);
         shader.SetInt("particleLength", totalParticles);
         shader.SetFloat("particleMass", particleMass);
         shader.SetFloat("pi", Mathf.PI);
@@ -117,6 +125,7 @@ public class SPH : MonoBehaviour
         shader.SetFloat("boundDamping", boundDamping);
         shader.SetFloat("densityTarget", densityTarget);
         shader.SetFloat("pressureMulti", pressureForce);
+        shader.SetFloat("nearPressureMulti", nearPressureForce);
         shader.SetFloat("disNum", disNum);
         shader.SetFloat("viscosityMulti", viscosity);
     }
@@ -155,19 +164,23 @@ public class SPH : MonoBehaviour
         shader.SetBuffer(integrateKernel, "_particles", _particleBuffer);
         shader.SetBuffer(densityKernel, "_particles", _particleBuffer);
         shader.SetBuffer(pressureKernel, "_particles", _particleBuffer);
-        shader.SetBuffer(forceKernel, "_particles", _particleBuffer);
         shader.SetBuffer(viscosityKernel, "_particles", _particleBuffer);
+        shader.SetBuffer(forceKernel, "_particles", _particleBuffer);
+
     }
 
     private void OnDrawGizmos()
     {
+        Matrix4x4 matrix = Gizmos.matrix;
         Gizmos.color = Color.blue;
-        Gizmos.DrawWireCube(Vector3.zero, boxSize);
+        Gizmos.DrawWireCube(transform.position, boxSize);
+        Gizmos.matrix = transform.localToWorldMatrix;
 
         if (!Application.isPlaying)
         {
             Gizmos.color = Color.cyan;
             Gizmos.DrawWireSphere(spawnCenter, 0.1f);
         }
+        Gizmos.matrix = matrix;
     }
 }

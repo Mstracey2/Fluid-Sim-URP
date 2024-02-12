@@ -35,9 +35,9 @@ Shader "Unlit/Test"
 
             struct Particle
             {
-                float pressure;
-                float density;
-                float3 currentForce;
+                float3 pressure;
+                float2 density;
+                float3 external;
                 float3 velocity;
                 float3 position;
                 float3 positionPrediction;

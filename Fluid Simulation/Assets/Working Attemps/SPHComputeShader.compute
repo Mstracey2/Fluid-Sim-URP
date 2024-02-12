@@ -6,9 +6,9 @@
 #pragma kernel ApplyForces
 
 struct Particle {
-	float pressure;
-	float density;
-	float3 currentForce;
+	float3 pressure;
+	float2 density;
+    float3 external;
 	float3 velocity;
 	float3 position;
     float3 positionPrediction;
@@ -25,6 +25,7 @@ float timestep;
 float3 boxSize;
 float densityTarget;
 float pressureMulti;
+float nearPressureMulti;
 float viscosityMulti;
 float disNum;
 
@@ -34,7 +35,7 @@ void Integrate(uint3 id : SV_DISPATCHTHREADID)
 {
     if (id.x >= particleLength)
         return;
-    float3 vel = _particles[id.x].velocity + ((_particles[id.x].currentForce / particleMass) * timestep);
+    float3 vel = _particles[id.x].velocity + ((_particles[id.x].external / particleMass) * timestep);
     float3 topRight = boxSize / 2;
     float3 bottomLeft = -boxSize / 2;
         
@@ -88,6 +89,17 @@ float DensityKernal_SpikedGradient(float dist)
     return 0;
 }
 
+float NearDensityKernal_GreaterSpikedGradient(float dist)
+{
+    if (dist < radius)
+    {
+        float scale = 15 / (pi * pow(radius, 6));
+        float vel = radius - dist;
+        return vel * vel * vel * scale;
+    }
+    return 0;
+}
+
 /*
     This gradient type is used for the calculation of pressure. It has the same gradient pattern as the density, but we use this instead.
     The reasoning to why this Kernal makes the sim work and the regular density kernal doesn't, for this case, the distance between the particle reduces the value of the gradient of the kernel becomes zero making the pressure force zero.
@@ -100,6 +112,17 @@ float DerivativeDensityKernal_DerivativeSpikedGradient(float dist)
         float scale = 15 / (pow(radius, 5) * pi);
         float vel = radius - dist;
         return vel * scale;
+    }
+    return 0;
+}
+
+float NearDerivativeDensityKernel_GreaterDerivativeSpikedGradient(float dist)
+{
+    if (dist <= radius)
+    {
+        float scale = 45 / (pow(radius, 6) * pi);
+        float vel = radius - dist;
+        return vel * vel * scale;
     }
     return 0;
 }
@@ -122,6 +145,10 @@ float GetPressureFromDensity(float density)
     return (density - densityTarget) * pressureMulti;
 }
 
+float NearPressureFromDensity(float nearDensity)
+{
+    return nearDensity * nearPressureMulti;
+}
 /*
     According to newtons third law:
     for every action (force) in nature there is an equal and opposite reaction.
@@ -132,7 +159,13 @@ float GetSharedPressure(float denA, float denB)
     float pressure1 = GetPressureFromDensity(denA);
     float pressure2 = GetPressureFromDensity(denB);
     return (pressure1, pressure2) / 2;
+}
 
+float GetNearSharedPressure(float denA, float denB)
+{
+    float pressure1 = NearPressureFromDensity(denA);
+    float pressure2 = NearPressureFromDensity(denB);
+    return (pressure1, pressure2) / 2;
 }
 
 // Calculates the density of the particle, does so by getting the distance between particles, and the density is affected via the mass and gradient influence.
@@ -142,6 +175,7 @@ void CalculateDensity(uint id : SV_DispatchThreadID)
     if (id.x >= particleLength) return;
     float3 particlePos = _particles[id.x].positionPrediction;
     float dens = 0;
+    float nearDens = 0;
     for (int i = 0; i < particleLength; i++)
     {
         if (id.x != i) continue;
@@ -150,8 +184,11 @@ void CalculateDensity(uint id : SV_DispatchThreadID)
         float dist = sqrt(particleOffset);
         float gradientInfl = DensityKernal_SpikedGradient(dist);
         dens += gradientInfl * particleMass;
+        gradientInfl = NearDensityKernal_GreaterSpikedGradient(dist);
+        nearDens += gradientInfl * particleMass;
+
     }
-    _particles[id.x].density = dens;
+    _particles[id.x].density = float2(dens,nearDens);
 	
 }
 
@@ -172,11 +209,13 @@ void CalculatePressure(uint id : SV_DispatchThreadID)
         
         float gradientInfl = DerivativeDensityKernal_DerivativeSpikedGradient(dist);
         float3 dir = dist > 0 ? particleOffset / dist : float3(0, 1, 0);
-        pressureForce += dir * gradientInfl * GetSharedPressure(_particles[id.x].density, _particles[i].density) / density;
+        pressureForce += dir * gradientInfl * GetSharedPressure(_particles[id.x].density[0], _particles[i].density[0]) / _particles[i].density[0];
+        gradientInfl = NearDerivativeDensityKernel_GreaterDerivativeSpikedGradient(dist);
+        pressureForce += dir * gradientInfl * GetNearSharedPressure(_particles[id.x].density[1], _particles[i].density[1]) / _particles[i].density[1];
 
     }
     float3 acceleration = pressureForce / density;
-    _particles[id.x].velocity += acceleration * timestep;
+    _particles[id.x].pressure = acceleration * timestep;
 }
 
 
@@ -199,16 +238,18 @@ void CalculateViscosity(uint id : SV_DispatchThreadID)
         viscosityForce += (_particles[i].velocity - currentVel) * gradientInfl;
     }
     
-    _particles[i].velocity += viscosityForce * viscosityMulti * timestep;
+    _particles[id.x].velocity += (viscosityForce * viscosityMulti) * timestep;
 
 }
 
 [numthreads(100, 1, 1)]
 void ApplyForces(uint id : SV_DispatchThreadID)
 {
-    _particles[id.x].position += _particles[id.x].velocity * timestep;
+    _particles[id.x].velocity += +_particles[id.x].pressure;
+
+    _particles[id.x].position += (_particles[id.x].velocity) * timestep;
     
-    _particles[id.x].currentForce = float3(0, gravity * particleMass, 0); //+ _particles[id.x].pressure;
+    _particles[id.x].external = float3(0, gravity * particleMass, 0);
 }
 
 
