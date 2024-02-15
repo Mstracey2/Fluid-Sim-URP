@@ -3,25 +3,26 @@ Shader "Unlit/Test"
     Properties
     {
         _MainTex ("Texture", 2D) = "white" {}
-        _BaseColor("Base Color", Color) = (1, 1, 1, 1)
     }
         SubShader
         {
-            Tags { "RenderType" = "Opaque" }
+            Tags { "RenderType" = "Opaque" "RenderPipeline" = "UniversalPipeline" "IgnoreProjector" = "True"}
             LOD 100
 
 
                 HLSLINCLUDE
                 
                 // Shader Stages
-                #pragma vertex UnlitPassVertex
-                #pragma fragment UnlitPassFragment
+                #pragma vertex vert
+                #pragma fragment frag
                 // -------------------------------------
                 //--------------------------------------
                 // GPU Instancing
+                #pragma target 4.5
                 #pragma multi_compile_instancing
+                #pragma multi_compile _ DOTS_INSTANCING_ON
                 #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DOTS.hlsl"
-                #pragma instancing_options procedural:setup
+                //#pragma instancing_options procedural:setup
                 // -------------------------------------
                 // Includes
                 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
@@ -32,7 +33,7 @@ Shader "Unlit/Test"
             TEXTURE2D(_MainTex);
             SAMPLER(sampler_MainTex);
             float _size;
-
+            
             struct Particle
             {
                 float3 pressure;
@@ -43,6 +44,7 @@ Shader "Unlit/Test"
                 float3 positionPrediction;
             };
 
+            StructuredBuffer<Particle> _particlesBuffer;
             struct VertexInput
             {
                 float4 position : POSITION;
@@ -53,6 +55,7 @@ Shader "Unlit/Test"
             {
                 float4 position : SV_POSITION;
                 float2 uv : TEXCOORD0;
+                float3 colour : TEXCOORD1;
             };
 
             ENDHLSL
@@ -62,30 +65,24 @@ Shader "Unlit/Test"
             
                 HLSLPROGRAM
 
-                #ifdef UNITY_PROCEDURAL_INSTANCING_ENABLED
-                    StructuredBuffer<Particle> _particlesBuffer;
-                #endif
+                VertexOutput vert(VertexInput v, uint instanceID : SV_InstanceID)
+                {
+                    float3 centreWorld = _particlesBuffer[instanceID].position;
+                    float3 worldVertPos = centreWorld + mul(unity_ObjectToWorld, v.position * _size);
+                    float3 objectVertPos = mul(unity_WorldToObject, float4(worldVertPos.xyz, 1));
+                    VertexOutput o;
+                    o.uv = v.uv;
+                    o.colour = float3(length(_particlesBuffer[instanceID].velocity),0,0);
+                    o.position = TransformObjectToHClip(objectVertPos);
 
-                    void setup()
-                    {
-                    #ifdef UNITY_PROCEDURAL_INSTANCING_ENABLED
-                        float3 pos = _particlesBuffer[unity_InstanceID].position;
-                        float size = _size;
-
-                        unity_ObjectToWorld._11_21_31_41 = float4(size, 0, 0, 0);
-                        unity_ObjectToWorld._12_22_32_42 = float4(0, size, 0, 0);
-                        unity_ObjectToWorld._13_23_33_43 = float4(0, 0, size, 0);
-                        unity_ObjectToWorld._14_24_34_44 = float4(pos.xyz, 1);
-                        unity_WorldToObject = unity_ObjectToWorld;
-                        unity_WorldToObject._14_24_34 *= -1;
-                        unity_WorldToObject._11_22_33 = 1.0f / unity_WorldToObject._11_22_33;
-                    #endif
-                    }
+                    return o;
+                }
 
                 float4 frag(VertexOutput i) : SV_Target
                 {
-                    float4 baseTex = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, i.uv);
-                    return baseTex * _BaseColor;
+                    //float4 baseTex = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, i.uv);
+
+                     return float4(i.colour,1);
                 }
 
                     ENDHLSL

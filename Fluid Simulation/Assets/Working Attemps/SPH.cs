@@ -90,6 +90,7 @@ public class SPH : MonoBehaviour
 
     private void Update()
     {
+        boxSize = transform.localScale;
         material.SetFloat(SizeProperty, particleRenderSize);
         material.SetBuffer(ParticelsBufferProperty, _particleBuffer);
         //pDisplay.ProduceGradientColour(material);
@@ -173,7 +174,7 @@ public class SPH : MonoBehaviour
     {
         Matrix4x4 matrix = Gizmos.matrix;
         Gizmos.color = Color.blue;
-        Gizmos.DrawWireCube(transform.position, boxSize);
+        Gizmos.DrawWireCube(transform.position, transform.localScale);
         Gizmos.matrix = transform.localToWorldMatrix;
 
         if (!Application.isPlaying)

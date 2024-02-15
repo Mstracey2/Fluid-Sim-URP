@@ -149,6 +149,7 @@ float NearPressureFromDensity(float nearDensity)
 {
     return nearDensity * nearPressureMulti;
 }
+
 /*
     According to newtons third law:
     for every action (force) in nature there is an equal and opposite reaction.
