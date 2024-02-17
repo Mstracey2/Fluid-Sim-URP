@@ -23,57 +23,51 @@ float pi;
 int particleLength;
 float timestep;
 float3 boxSize;
+float3 boxCentre;
 float densityTarget;
 float pressureMulti;
 float nearPressureMulti;
 float viscosityMulti;
 float disNum;
+float4x4 worldMatrix;
+float4x4 localMatrix;
 
 
 [numthreads(100, 1, 1)]
 void Integrate(uint3 id : SV_DISPATCHTHREADID)
 {
-    if (id.x >= particleLength)
-        return;
-    float3 vel = _particles[id.x].velocity + ((_particles[id.x].external / particleMass) * timestep);
-    float3 topRight = boxSize / 2;
-    float3 bottomLeft = -boxSize / 2;
-        
-        /*
-        below is the functionality to produce collision with the bounds of the box grid    
-        */
-    if (_particles[id.x].position.x - radius < bottomLeft.x)
+    if (id.x >= particleLength) return;
+    
+    // Transform position/velocity to the local space
+    float3 posLocal = mul(localMatrix, float4(_particles[id.x].position, 1)).xyz;
+    float3 velocityLocal = mul(localMatrix, float4(_particles[id.x].velocity, 0)).xyz;
+    
+    //get the distance of boxes axises
+    const float3 halfSize = 0.5;
+    const float3 edgeDst = halfSize - abs(posLocal);
+    
+    // Resolve collisions
+    if (edgeDst.x <= 0)
     {
-        vel.x *= boundDamping;
-        _particles[id.x].position.x = bottomLeft.x + radius;
+        posLocal.x = halfSize.x * sign(posLocal.x);
+        velocityLocal.x *= -1 * boundDamping;
     }
-    if (_particles[id.x].position.y - radius < bottomLeft.y)
+    if (edgeDst.y <= 0)
     {
-        vel.y *= boundDamping;
-        _particles[id.x].position.y = bottomLeft.y + radius;
+        posLocal.y = halfSize.y * sign(posLocal.y);
+        velocityLocal.y *= -1 * boundDamping;
     }
-    if (_particles[id.x].position.z - radius < bottomLeft.z)
+    if (edgeDst.z <= 0)
     {
-        vel.z *= boundDamping;
-        _particles[id.x].position.z = bottomLeft.z + radius;
-    }
-    if (_particles[id.x].position.x + radius > topRight.x)
-    {
-        vel.x *= boundDamping;
-        _particles[id.x].position.x = topRight.x - radius;
-    }
-    if (_particles[id.x].position.y + radius > topRight.y)
-    {
-        vel.y *= boundDamping;
-        _particles[id.x].position.y = topRight.y - radius;
-    }
-    if (_particles[id.x].position.z + radius > topRight.z)
-    {
-        vel.z *= boundDamping;
-        _particles[id.x].position.z = topRight.z - radius;
+        posLocal.z = halfSize.z * sign(posLocal.z);
+        velocityLocal.z *= -1 * boundDamping;
     }
     
-    _particles[id.x].velocity = vel;
+    
+    _particles[id.x].position = mul(worldMatrix, float4(posLocal, 1)).xyz;
+    _particles[id.x].velocity = mul(worldMatrix, float4(velocityLocal, 0)).xyz;
+    
+    //_particles[id.x].velocity = vel;
     _particles[id.x].positionPrediction = _particles[id.x].position + _particles[id.x].velocity * 1 / disNum;
 }
 
@@ -246,11 +240,15 @@ void CalculateViscosity(uint id : SV_DispatchThreadID)
 [numthreads(100, 1, 1)]
 void ApplyForces(uint id : SV_DispatchThreadID)
 {
-    _particles[id.x].velocity += +_particles[id.x].pressure;
+    _particles[id.x].external = float3(0, gravity / particleMass, 0) * timestep;
+    
+    _particles[id.x].velocity += _particles[id.x].external;
+    
+    _particles[id.x].velocity += _particles[id.x].pressure;
 
     _particles[id.x].position += (_particles[id.x].velocity) * timestep;
     
-    _particles[id.x].external = float3(0, gravity * particleMass, 0);
+
 }
 
 

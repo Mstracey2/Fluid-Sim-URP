@@ -26,6 +26,7 @@ public class SPH : MonoBehaviour
     public Vector3Int numToSpawn = new Vector3Int(10, 10, 10);
     private int totalParticles { get { return numToSpawn.x * numToSpawn.y * numToSpawn.z; } }
     public Vector3 boxSize = new Vector3(4, 10, 3);
+    public Vector3 boxCentre = new Vector3(4, 10, 3);
     public Vector3 spawnCenter;
     public float particleRadius = 0.1f;
     public float spawnJitter = 0.2f;
@@ -51,19 +52,20 @@ public class SPH : MonoBehaviour
     public float viscosity;
     private ComputeBuffer _argsBuffer;
     private ComputeBuffer _particleBuffer;
-    public ParticleDisplay pDisplay;
     //Kernals
     private int integrateKernel;
     private int densityKernel;
     private int pressureKernel;
     private int forceKernel;
     private int viscosityKernel;
+    public Gradient colourGradient;
 
     private static readonly int SizeProperty = Shader.PropertyToID("_size");
     private static readonly int ParticelsBufferProperty = Shader.PropertyToID("_particlesBuffer");
 
     private void Awake()
     {
+
         SpawnParticlesInBox();
         uint[] args =
         {
@@ -91,6 +93,7 @@ public class SPH : MonoBehaviour
     private void Update()
     {
         boxSize = transform.localScale;
+        boxCentre = transform.localPosition;
         material.SetFloat(SizeProperty, particleRenderSize);
         material.SetBuffer(ParticelsBufferProperty, _particleBuffer);
         //pDisplay.ProduceGradientColour(material);
@@ -115,6 +118,7 @@ public class SPH : MonoBehaviour
 
     private void SetComputeVariables(float time)
     {
+        produceColourGradientMap();
         shader.SetVector("boxSize", boxSize);
         shader.SetFloat("timestep", time);
         shader.SetInt("particleLength", totalParticles);
@@ -129,6 +133,10 @@ public class SPH : MonoBehaviour
         shader.SetFloat("nearPressureMulti", nearPressureForce);
         shader.SetFloat("disNum", disNum);
         shader.SetFloat("viscosityMulti", viscosity);
+        shader.SetVector("boxCentre", boxCentre);
+        shader.SetMatrix("worldMatrix", transform.localToWorldMatrix);
+        shader.SetMatrix("localMatrix", transform.worldToLocalMatrix);
+        material.SetFloat("maxVel", particleMaxVelocity);
     }
 
     private void SpawnParticlesInBox()
@@ -174,8 +182,8 @@ public class SPH : MonoBehaviour
     {
         Matrix4x4 matrix = Gizmos.matrix;
         Gizmos.color = Color.blue;
-        Gizmos.DrawWireCube(transform.position, transform.localScale);
         Gizmos.matrix = transform.localToWorldMatrix;
+        Gizmos.DrawWireCube(Vector3.zero, Vector3.one);
 
         if (!Application.isPlaying)
         {
@@ -183,5 +191,26 @@ public class SPH : MonoBehaviour
             Gizmos.DrawWireSphere(spawnCenter, 0.1f);
         }
         Gizmos.matrix = matrix;
+    }
+
+    Color[] colourMap;
+    Texture2D texture;
+    public int resolution;
+    public int particleMaxVelocity;
+    private void produceColourGradientMap()
+    {
+        texture = new Texture2D(resolution, 1);
+        texture.wrapMode = TextureWrapMode.Clamp;
+        texture.filterMode = FilterMode.Bilinear;
+        colourMap = new Color[resolution];
+        for(int i = 0; i< colourMap.Length; i++)
+        {
+            float t = i / (colourMap.Length - 1f);
+            colourMap[i] = colourGradient.Evaluate(t);
+        }
+
+        texture.SetPixels(colourMap);
+        texture.Apply();
+        material.SetTexture("ColourMap", texture);
     }
 }
