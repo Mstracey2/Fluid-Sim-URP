@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System.Runtime.InteropServices;
+using UnityEngine.InputSystem;
 
 [System.Serializable]
 [StructLayout(LayoutKind.Sequential, Size = 68)]
@@ -24,7 +25,6 @@ public class SPH : MonoBehaviour
     public bool showSpheres = true;
     public bool fixedTimestep;
     public Vector3Int numToSpawn = new Vector3Int(10, 10, 10);
-    private int totalParticles { get { return numToSpawn.x * numToSpawn.y * numToSpawn.z; } }
     public Vector3 boxSize = new Vector3(4, 10, 3);
     public Vector3 boxCentre = new Vector3(4, 10, 3);
     public Vector3 spawnCenter;
@@ -32,33 +32,50 @@ public class SPH : MonoBehaviour
     public float spawnJitter = 0.2f;
     public float timestep = -0.007f;
     public int numOfParticleCalc;
+    private int totalParticles { get { return numToSpawn.x * numToSpawn.y * numToSpawn.z; } }
 
     [Header("Particle Rendering")]
     public Mesh particleMesh;
     public float particleRenderSize = 8f;
     public Material material;
+    public Gradient colourGradient;
+    public int resolution;
+    public int particleMaxVelocity;
+    Color[] colourMap;
+    Texture2D texture;
 
-    [Header("Compute")]
-    public ComputeShader shader;
-    public Particle[] particles;
+    [Header("Mouse")]
+    public GameObject mouseSphereRef;
+    public float pushPullForce;
+    private MouseParticleMover magnet;
+    private Vector3 mouseRefCentre;
+    public float mouseRadius;
+    private bool pull;
+    private bool push;
 
     [Header("Fluid Constants")]
     public float particleMass = 1f;
-    
     public float densityTarget;
     public float pressureForce;
     public float nearPressureForce;
     public float disNum;
     public float viscosity;
+
+    [Header("Compute")]
+    public ComputeShader shader;
+    public Particle[] particles;
+
     private ComputeBuffer _argsBuffer;
     private ComputeBuffer _particleBuffer;
+
     //Kernals
-    private int integrateKernel;
+    private int externalKernel;
+    private int detectBoundsKernel;
     private int densityKernel;
     private int pressureKernel;
     private int forceKernel;
     private int viscosityKernel;
-    public Gradient colourGradient;
+
 
     private static readonly int SizeProperty = Shader.PropertyToID("_size");
     private static readonly int ParticelsBufferProperty = Shader.PropertyToID("_particlesBuffer");
@@ -75,6 +92,7 @@ public class SPH : MonoBehaviour
             particleMesh.GetBaseVertex(0),
             0
         };
+        magnet = mouseSphereRef.GetComponent<MouseParticleMover>();
         _argsBuffer = new ComputeBuffer(1, args.Length * sizeof(uint), ComputeBufferType.IndirectArguments);
         _argsBuffer.SetData(args);
         _particleBuffer = new ComputeBuffer(totalParticles, 68);
@@ -92,11 +110,11 @@ public class SPH : MonoBehaviour
 
     private void Update()
     {
+        mouseRefCentre = mouseSphereRef.transform.position;
         boxSize = transform.localScale;
         boxCentre = transform.localPosition;
         material.SetFloat(SizeProperty, particleRenderSize);
         material.SetBuffer(ParticelsBufferProperty, _particleBuffer);
-        //pDisplay.ProduceGradientColour(material);
         if (showSpheres)
         {
             Graphics.DrawMeshInstancedIndirect(particleMesh, 0, material, new Bounds(Vector3.zero, boxSize), _argsBuffer, castShadows: UnityEngine.Rendering.ShadowCastingMode.Off);
@@ -109,7 +127,8 @@ public class SPH : MonoBehaviour
         float timeStepper = frames / numOfParticleCalc * timestep;
         SetComputeVariables(timeStepper);
 
-        shader.Dispatch(integrateKernel, totalParticles / 100, 1, 1);
+        shader.Dispatch(detectBoundsKernel, totalParticles / 100, 1, 1);
+        shader.Dispatch(externalKernel, totalParticles / 100, 1, 1);
         shader.Dispatch(densityKernel, totalParticles / 100, 1, 1);
         shader.Dispatch(pressureKernel, totalParticles / 100, 1, 1);
         shader.Dispatch(viscosityKernel, totalParticles / 100, 1, 1);
@@ -137,6 +156,11 @@ public class SPH : MonoBehaviour
         shader.SetMatrix("worldMatrix", transform.localToWorldMatrix);
         shader.SetMatrix("localMatrix", transform.worldToLocalMatrix);
         material.SetFloat("maxVel", particleMaxVelocity);
+        shader.SetVector("mousePos", mouseRefCentre);
+        shader.SetFloat("mouseRadius", mouseRadius);
+        shader.SetFloat("pushPullForce", pushPullForce);
+        shader.SetBool("push", push);
+        shader.SetBool("pull", pull);
     }
 
     private void SpawnParticlesInBox()
@@ -164,13 +188,15 @@ public class SPH : MonoBehaviour
 
     private void FindKernelsAndSetBuffers()
     {
-        integrateKernel = shader.FindKernel("Integrate");
+        externalKernel = shader.FindKernel("CalculateExternalForces");
+        detectBoundsKernel = shader.FindKernel("DetectBounds");
         densityKernel = shader.FindKernel("CalculateDensity");
         pressureKernel = shader.FindKernel("CalculatePressure");
         viscosityKernel = shader.FindKernel("CalculateViscosity");
         forceKernel = shader.FindKernel("ApplyForces");
 
-        shader.SetBuffer(integrateKernel, "_particles", _particleBuffer);
+        shader.SetBuffer(externalKernel, "_particles", _particleBuffer);
+        shader.SetBuffer(detectBoundsKernel, "_particles", _particleBuffer);
         shader.SetBuffer(densityKernel, "_particles", _particleBuffer);
         shader.SetBuffer(pressureKernel, "_particles", _particleBuffer);
         shader.SetBuffer(viscosityKernel, "_particles", _particleBuffer);
@@ -193,10 +219,30 @@ public class SPH : MonoBehaviour
         Gizmos.matrix = matrix;
     }
 
-    Color[] colourMap;
-    Texture2D texture;
-    public int resolution;
-    public int particleMaxVelocity;
+    public void PushParticles(InputAction.CallbackContext context)
+    {
+        if (context.performed)
+        {
+            push = true;
+        }
+        else if(context.canceled)
+        {
+            push = false;
+        }
+    }
+
+    public void PullParticles(InputAction.CallbackContext context)
+    {
+        if (context.performed)
+        {
+            pull = true;
+        }
+        else if (context.canceled)
+        {
+            pull = false;
+        }
+    }
+
     private void produceColourGradientMap()
     {
         texture = new Texture2D(resolution, 1);

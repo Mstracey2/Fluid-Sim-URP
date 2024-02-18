@@ -1,5 +1,5 @@
-
-#pragma kernel Integrate
+#pragma kernel CalculateExternalForces
+#pragma kernel DetectBounds
 #pragma kernel CalculateDensity
 #pragma kernel CalculatePressure
 #pragma kernel CalculateViscosity
@@ -32,9 +32,35 @@ float disNum;
 float4x4 worldMatrix;
 float4x4 localMatrix;
 
+float3 mousePos;
+float mouseRadius;
+float pushPullForce;
+bool pull;
+bool push;
+
 
 [numthreads(100, 1, 1)]
-void Integrate(uint3 id : SV_DISPATCHTHREADID)
+void CalculateExternalForces(uint3 id : SV_DISPATCHTHREADID)
+{
+    float3 particleOffset = (_particles[id.x].positionPrediction - mousePos);
+    float partDis = dot(particleOffset, particleOffset);
+    float dist = sqrt(partDis);
+    float3 dir = dist > 0 ? particleOffset / dist : float3(0, 1, 0);
+    if (dist < mouseRadius)
+    {
+        if (pull)
+        {
+            _particles[id.x].velocity -= dir * pushPullForce;
+        }
+        if (push)
+        {
+            _particles[id.x].velocity += dir * pushPullForce;
+        }
+    }
+}
+
+[numthreads(100, 1, 1)]
+void DetectBounds(uint3 id : SV_DISPATCHTHREADID)
 {
     if (id.x >= particleLength) return;
     
@@ -247,8 +273,6 @@ void ApplyForces(uint id : SV_DispatchThreadID)
     _particles[id.x].velocity += _particles[id.x].pressure;
 
     _particles[id.x].position += (_particles[id.x].velocity) * timestep;
-    
-
 }
 
 
