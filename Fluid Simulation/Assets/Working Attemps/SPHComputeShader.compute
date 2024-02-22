@@ -28,7 +28,7 @@ float densityTarget;
 float pressureMulti;
 float nearPressureMulti;
 float viscosityMulti;
-float disNum;
+float predictionIteration;
 float4x4 worldMatrix;
 float4x4 localMatrix;
 
@@ -94,7 +94,7 @@ void DetectBounds(uint3 id : SV_DISPATCHTHREADID)
     _particles[id.x].velocity = mul(worldMatrix, float4(velocityLocal, 0)).xyz;
     
     //_particles[id.x].velocity = vel;
-    _particles[id.x].positionPrediction = _particles[id.x].position + _particles[id.x].velocity * 1 / disNum;
+    _particles[id.x].positionPrediction = _particles[id.x].position + _particles[id.x].velocity * 1 / predictionIteration;
 }
 
 //This Kernal type is used for the calculation of density. Theoretically, the peak is a spiked top with a harsh decline

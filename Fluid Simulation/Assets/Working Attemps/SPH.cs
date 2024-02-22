@@ -47,7 +47,6 @@ public class SPH : MonoBehaviour
     [Header("Mouse")]
     public GameObject mouseSphereRef;
     public float pushPullForce;
-    private MouseParticleMover magnet;
     private Vector3 mouseRefCentre;
     public float mouseRadius;
     private bool pull;
@@ -58,7 +57,7 @@ public class SPH : MonoBehaviour
     public float densityTarget;
     public float pressureForce;
     public float nearPressureForce;
-    public float disNum;
+    public float predictionIteration;
     public float viscosity;
 
     [Header("Compute")]
@@ -92,7 +91,6 @@ public class SPH : MonoBehaviour
             particleMesh.GetBaseVertex(0),
             0
         };
-        magnet = mouseSphereRef.GetComponent<MouseParticleMover>();
         _argsBuffer = new ComputeBuffer(1, args.Length * sizeof(uint), ComputeBufferType.IndirectArguments);
         _argsBuffer.SetData(args);
         _particleBuffer = new ComputeBuffer(totalParticles, 68);
@@ -150,7 +148,7 @@ public class SPH : MonoBehaviour
         shader.SetFloat("densityTarget", densityTarget);
         shader.SetFloat("pressureMulti", pressureForce);
         shader.SetFloat("nearPressureMulti", nearPressureForce);
-        shader.SetFloat("disNum", disNum);
+        shader.SetFloat("predictionIteration", predictionIteration);
         shader.SetFloat("viscosityMulti", viscosity);
         shader.SetVector("boxCentre", boxCentre);
         shader.SetMatrix("worldMatrix", transform.localToWorldMatrix);
