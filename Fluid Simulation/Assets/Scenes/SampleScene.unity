@@ -1068,17 +1068,17 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 315490831}
   m_FillRect: {fileID: 1791821709}
   m_HandleRect: {fileID: 315490830}
-  m_Direction: 1
-  m_MinValue: -5
-  m_MaxValue: 0
+  m_Direction: 0
+  m_MinValue: 0
+  m_MaxValue: 50
   m_WholeNumbers: 0
-  m_Value: -3.07
+  m_Value: 0
   m_OnValueChanged:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1656164923}
-        m_TargetAssemblyTypeName: FluidConstantsUI, Assembly-CSharp
-        m_MethodName: ChangeNearPressureForce
+      - m_Target: {fileID: 1656164924}
+        m_TargetAssemblyTypeName: RenderingUI, Assembly-CSharp
+        m_MethodName: UpdateVelocityMax
         m_Mode: 2
         m_Arguments:
           m_ObjectArgument: {fileID: 127855319}
@@ -5968,7 +5968,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 154.3, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 200, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &711835711
@@ -7088,9 +7088,9 @@ MonoBehaviour:
   m_OnValueChanged:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1656164923}
-        m_TargetAssemblyTypeName: FluidConstantsUI, Assembly-CSharp
-        m_MethodName: ChangeParticleMass
+      - m_Target: {fileID: 1656164924}
+        m_TargetAssemblyTypeName: RenderingUI, Assembly-CSharp
+        m_MethodName: UpdateRenderSize
         m_Mode: 2
         m_Arguments:
           m_ObjectArgument: {fileID: 843539608}
@@ -8185,9 +8185,9 @@ MonoBehaviour:
   m_OnValueChanged:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1656164923}
-        m_TargetAssemblyTypeName: FluidConstantsUI, Assembly-CSharp
-        m_MethodName: ChangePressureForce
+      - m_Target: {fileID: 1656164924}
+        m_TargetAssemblyTypeName: RenderingUI, Assembly-CSharp
+        m_MethodName: UpdateResolution
         m_Mode: 2
         m_Arguments:
           m_ObjectArgument: {fileID: 1086365342}
@@ -8946,7 +8946,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0.25}
   m_AnchorMax: {x: 1, y: 0.75}
-  m_AnchoredPosition: {x: 5, y: 0}
+  m_AnchoredPosition: {x: -5, y: 0}
   m_SizeDelta: {x: -20, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &1199743917
