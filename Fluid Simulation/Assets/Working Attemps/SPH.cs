@@ -74,14 +74,17 @@ public class SPH : MonoBehaviour
     private int pressureKernel;
     private int forceKernel;
     private int viscosityKernel;
-
+    LineRenderer lineRend;
+    public float lineRendMulti;
 
     private static readonly int SizeProperty = Shader.PropertyToID("_size");
     private static readonly int ParticelsBufferProperty = Shader.PropertyToID("_particlesBuffer");
 
     private void Awake()
     {
-
+        
+        lineRend = GetComponent<LineRenderer>();
+        lineRend.positionCount = 16;
         SpawnParticlesInBox();
         uint[] args =
         {
@@ -108,6 +111,7 @@ public class SPH : MonoBehaviour
 
     private void Update()
     {
+        CalculateBoxVertices();
         mouseRefCentre = mouseSphereRef.transform.position;
         boxSize = transform.localScale;
         boxCentre = transform.localPosition;
@@ -119,7 +123,29 @@ public class SPH : MonoBehaviour
         }
             
     }
+    private void CalculateBoxVertices()
+    {
+        var trans = this.transform;
+        var min = trans.position - transform.localScale * 0.5f;
+        var max = trans.position + transform.localScale * 0.5f;
 
+        lineRend.SetPosition(0,new Vector3(min.x, min.y, min.z));
+        lineRend.SetPosition(1, new Vector3(min.x, min.y, max.z));
+        lineRend.SetPosition(3, new Vector3(min.x, max.y, min.z));
+        lineRend.SetPosition(2,new Vector3(min.x, max.y, max.z));
+        lineRend.SetPosition(4, new Vector3(min.x, min.y, min.z));
+        lineRend.SetPosition(5,new Vector3(max.x, min.y, min.z));
+        lineRend.SetPosition(6, new Vector3(max.x, max.y, min.z));
+        lineRend.SetPosition(7, new Vector3(min.x, max.y, min.z));
+        lineRend.SetPosition(8, new Vector3(max.x, max.y, min.z));
+        lineRend.SetPosition(9, (new Vector3(max.x, max.y, max.z)));
+        lineRend.SetPosition(10,(new Vector3(min.x, max.y, max.z)));
+        lineRend.SetPosition(11, (new Vector3(max.x, max.y, max.z)));
+        lineRend.SetPosition(12, (new Vector3(max.x, min.y, max.z)));
+        lineRend.SetPosition(13, (new Vector3(min.x, min.y, max.z)));
+        lineRend.SetPosition(14, (new Vector3(max.x, min.y, max.z)));
+        lineRend.SetPosition(15, (new Vector3(max.x, min.y, min.z)));
+    }
     private void SimulateParticles(float frames)
     {
         float timeStepper = frames / numOfParticleCalc * timestep;
