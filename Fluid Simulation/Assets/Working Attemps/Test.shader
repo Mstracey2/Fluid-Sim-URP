@@ -34,7 +34,6 @@ Shader "Unlit/Test"
             SAMPLER(sampler_MainTex);
             float _size;
             float maxVel;
-
             struct Particle
             {
                 float3 pressure;
@@ -48,6 +47,7 @@ Shader "Unlit/Test"
             StructuredBuffer<Particle> _particlesBuffer;
             Texture2D<float4> ColourMap;
             SamplerState linear_clamp_sampler;
+            float gradientType;
             struct VertexInput
             {
                 float4 position : POSITION;
@@ -77,8 +77,23 @@ Shader "Unlit/Test"
                     o.uv = v.uv;
                     o.position = TransformObjectToHClip(objectVertPos);
 
+                    float3 gradientValue;
+
                     //Changing colour depending on the speed
-                    float speed = saturate(length(_particlesBuffer[instanceID].velocity) / maxVel);
+                    if (gradientType == 1) 
+                    {
+                        gradientValue = _particlesBuffer[instanceID].velocity;
+                    }
+                    else if (gradientType == 2)
+                    {
+                        gradientValue = _particlesBuffer[instanceID].pressure;
+                    }
+                    else if (gradientType == 3)
+                    {
+                        gradientValue = _particlesBuffer[instanceID].position;
+                    }
+
+                    float speed = saturate(length(gradientValue) / maxVel);
                     o.colour = ColourMap.SampleLevel(linear_clamp_sampler, float2(speed, 0.5), 0); //float3(0,0, length(_particlesBuffer[instanceID].velocity));
 
 

@@ -41,6 +41,7 @@ public class SPH : MonoBehaviour
     public Gradient colourGradient;
     public int resolution;
     public int particleMaxVelocity;
+    public int gradientType;
     Color[] colourMap;
     Texture2D texture;
 
@@ -74,6 +75,7 @@ public class SPH : MonoBehaviour
     private int pressureKernel;
     private int forceKernel;
     private int viscosityKernel;
+
     LineRenderer lineRend;
     public float lineRendMulti;
 
@@ -123,11 +125,12 @@ public class SPH : MonoBehaviour
         }
             
     }
+    public Transform transd;
     private void CalculateBoxVertices()
     {
-        var trans = this.transform;
-        var min = trans.position - transform.localScale * 0.5f;
-        var max = trans.position + transform.localScale * 0.5f;
+        var trans = transd;
+        var min = trans.localPosition - trans.localScale * 0.5f;
+        var max = trans.localPosition + trans.localScale * 0.5f;
 
         lineRend.SetPosition(0,new Vector3(min.x, min.y, min.z));
         lineRend.SetPosition(1, new Vector3(min.x, min.y, max.z));
@@ -150,13 +153,13 @@ public class SPH : MonoBehaviour
     {
         float timeStepper = frames / numOfParticleCalc * timestep;
         SetComputeVariables(timeStepper);
-
         shader.Dispatch(detectBoundsKernel, totalParticles / 100, 1, 1);
         shader.Dispatch(externalKernel, totalParticles / 100, 1, 1);
         shader.Dispatch(densityKernel, totalParticles / 100, 1, 1);
         shader.Dispatch(pressureKernel, totalParticles / 100, 1, 1);
         shader.Dispatch(viscosityKernel, totalParticles / 100, 1, 1);
         shader.Dispatch(forceKernel, totalParticles / 100, 1, 1);
+        
     }
 
     private void SetComputeVariables(float time)
@@ -179,12 +182,15 @@ public class SPH : MonoBehaviour
         shader.SetVector("boxCentre", boxCentre);
         shader.SetMatrix("worldMatrix", transform.localToWorldMatrix);
         shader.SetMatrix("localMatrix", transform.worldToLocalMatrix);
-        material.SetFloat("maxVel", particleMaxVelocity);
         shader.SetVector("mousePos", mouseRefCentre);
         shader.SetFloat("mouseRadius", mouseRadius);
         shader.SetFloat("pushPullForce", pushPullForce);
         shader.SetBool("push", push);
         shader.SetBool("pull", pull);
+        shader.SetFloat("gradientChoice", gradientType);
+
+        material.SetFloat("maxVel", particleMaxVelocity);
+        material.SetFloat("gradientType", gradientType);
     }
 
     private void SpawnParticlesInBox()
