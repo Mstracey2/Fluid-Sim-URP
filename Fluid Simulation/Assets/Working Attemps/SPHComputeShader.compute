@@ -5,6 +5,8 @@
 #pragma kernel CalculateViscosity
 #pragma kernel ApplyForces
 
+#include "./SpatialHashing.hlsl"
+
 struct Particle {
 	float3 pressure;
 	float2 density;
@@ -12,9 +14,11 @@ struct Particle {
 	float3 velocity;
 	float3 position;
     float3 positionPrediction;
+    uint2 hashData;
 };
 
 RWStructuredBuffer<Particle> _particles;
+RWStructuredBuffer<uint2> hashData;
 float gravity;
 float particleMass;
 float boundDamping;
@@ -31,7 +35,6 @@ float viscosityMulti;
 float predictionIteration;
 float4x4 worldMatrix;
 float4x4 localMatrix;
-
 float3 mousePos;
 float mouseRadius;
 float pushPullForce;
@@ -60,6 +63,23 @@ void CalculateExternalForces(uint3 id : SV_DISPATCHTHREADID)
     
     
 }
+
+[numthreads(100, 1, 1)]
+void GetSpacialHash(uint3 id : SV_DISPATCHTHREADID)
+{
+    int3 convertedCellSpace = intCoord(_particles[id.x].positionPrediction, radius);
+    uint hashCoord = HashCoords(convertedCellSpace, particleLength);
+    _particles[id.x].hashData = uint2(id.x, hashCoord);
+
+}
+
+[numthreads(100, 1, 1)]
+void SortHashData(uint3 id : SV_DISPATCHTHREADID)
+{
+
+}
+
+
 
 [numthreads(100, 1, 1)]
 void DetectBounds(uint3 id : SV_DISPATCHTHREADID)

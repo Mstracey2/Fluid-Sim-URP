@@ -42,9 +42,11 @@ Shader "Unlit/Test"
                 float3 velocity;
                 float3 position;
                 float3 positionPrediction;
+                uint2 hashData;
             };
 
             StructuredBuffer<Particle> _particlesBuffer;
+
             Texture2D<float4> ColourMap;
             SamplerState linear_clamp_sampler;
             float gradientType;

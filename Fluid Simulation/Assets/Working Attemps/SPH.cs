@@ -5,7 +5,7 @@ using System.Runtime.InteropServices;
 using UnityEngine.InputSystem;
 
 [System.Serializable]
-[StructLayout(LayoutKind.Sequential, Size = 68)]
+[StructLayout(LayoutKind.Sequential, Size = 76)]
 public struct Particle
 {
     public Vector3 pressure;
@@ -14,6 +14,7 @@ public struct Particle
     public Vector3 velocity;
     public Vector3 position;
     public Vector3 positionPrediction;
+    public Vector2Int hashData;
 }
 
 
@@ -67,7 +68,7 @@ public class SPH : MonoBehaviour
 
     private ComputeBuffer _argsBuffer;
     private ComputeBuffer _particleBuffer;
-
+    ComputeBuffer hashData;
     //Kernals
     private int externalKernel;
     private int detectBoundsKernel;
@@ -98,9 +99,11 @@ public class SPH : MonoBehaviour
         };
         _argsBuffer = new ComputeBuffer(1, args.Length * sizeof(uint), ComputeBufferType.IndirectArguments);
         _argsBuffer.SetData(args);
-        _particleBuffer = new ComputeBuffer(totalParticles, 68);
+        _particleBuffer = new ComputeBuffer(totalParticles, 76);
         _particleBuffer.SetData(particles);
+        hashData = new ComputeBuffer(totalParticles, 68);
         FindKernelsAndSetBuffers();
+
     }
 
     private void FixedUpdate()
@@ -164,7 +167,7 @@ public class SPH : MonoBehaviour
 
     private void SetComputeVariables(float time)
     {
-        produceColourGradientMap();
+        ProduceColourGradientMap();
         shader.SetVector("boxSize", boxSize);
         shader.SetFloat("timestep", time);
         shader.SetInt("particleLength", totalParticles);
@@ -273,7 +276,7 @@ public class SPH : MonoBehaviour
         }
     }
 
-    private void produceColourGradientMap()
+    private void ProduceColourGradientMap()
     {
         texture = new Texture2D(resolution, 1);
         texture.wrapMode = TextureWrapMode.Clamp;
