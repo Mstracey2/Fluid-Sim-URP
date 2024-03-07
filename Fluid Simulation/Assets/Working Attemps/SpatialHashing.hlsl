@@ -32,11 +32,16 @@ static const int3 offsets3D[27] = //FINALLY, I understand what this is doing. Fo
 };
     
     
-uint HashCoords(float3 position, float size)
+uint Hash(int3 position)
 {
     position = (uint3) position;
-    uint h = (position[0] * 92837111) + (position[1] * 689287499) + (position[2] * 283923481);
-    return h % size;
+    uint h = (position[0] * 15823) + (position[1] * 9737333) + (position[2] * 440817757);
+    return h;
+}
+
+uint HashKey(uint position, uint size)
+{
+    return position % size;
 }
     
 int3 intCoord(float3 pos, float radius)

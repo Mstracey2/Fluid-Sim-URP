@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using System.Runtime.InteropServices;
 using UnityEngine.InputSystem;
+using Unity.Mathematics;
 
 [System.Serializable]
 [StructLayout(LayoutKind.Sequential, Size = 76)]
@@ -14,7 +15,7 @@ public struct Particle
     public Vector3 velocity;
     public Vector3 position;
     public Vector3 positionPrediction;
-    public Vector2Int hashData;
+    public uint3 hashData;
 }
 
 
@@ -64,11 +65,18 @@ public class SPH : MonoBehaviour
 
     [Header("Compute")]
     public ComputeShader shader;
+    public ComputeShader sortingAlgorithm;
     public Particle[] particles;
+    public uint3[] hashDataVect;
+    public uint[] offsetHashData;
 
     private ComputeBuffer _argsBuffer;
-    private ComputeBuffer _particleBuffer;
-    ComputeBuffer hashData;
+    public ComputeBuffer _particleBuffer;
+    private ComputeBuffer _hashData;
+    private ComputeBuffer _offsetHashData;
+
+    private GPUSort bufferSorter;
+
     //Kernals
     private int externalKernel;
     private int detectBoundsKernel;
@@ -76,6 +84,7 @@ public class SPH : MonoBehaviour
     private int pressureKernel;
     private int forceKernel;
     private int viscosityKernel;
+    private int spatialHashKernel;
 
     LineRenderer lineRend;
     public float lineRendMulti;
@@ -99,9 +108,16 @@ public class SPH : MonoBehaviour
         };
         _argsBuffer = new ComputeBuffer(1, args.Length * sizeof(uint), ComputeBufferType.IndirectArguments);
         _argsBuffer.SetData(args);
-        _particleBuffer = new ComputeBuffer(totalParticles, 76);
+        _particleBuffer = new ComputeBuffer(totalParticles, 80);
         _particleBuffer.SetData(particles);
-        hashData = new ComputeBuffer(totalParticles, 68);
+
+        hashDataVect = new uint3[totalParticles];
+        offsetHashData = new uint[totalParticles];
+        _hashData = new ComputeBuffer(totalParticles, 12);
+        _hashData.SetData(hashDataVect);
+        _offsetHashData = new ComputeBuffer(totalParticles, 4);
+        _offsetHashData.SetData(offsetHashData);
+        
         FindKernelsAndSetBuffers();
 
     }
@@ -140,7 +156,7 @@ public class SPH : MonoBehaviour
         lineRend.SetPosition(3, new Vector3(min.x, max.y, min.z));
         lineRend.SetPosition(2,new Vector3(min.x, max.y, max.z));
         lineRend.SetPosition(4, new Vector3(min.x, min.y, min.z));
-        lineRend.SetPosition(5,new Vector3(max.x, min.y, min.z));
+        lineRend.SetPosition(5, new Vector3(max.x, min.y, min.z));
         lineRend.SetPosition(6, new Vector3(max.x, max.y, min.z));
         lineRend.SetPosition(7, new Vector3(min.x, max.y, min.z));
         lineRend.SetPosition(8, new Vector3(max.x, max.y, min.z));
@@ -156,13 +172,21 @@ public class SPH : MonoBehaviour
     {
         float timeStepper = frames / numOfParticleCalc * timestep;
         SetComputeVariables(timeStepper);
+
+        
+
+        shader.Dispatch(spatialHashKernel, totalParticles / 100, 1, 1);
+        bufferSorter.SortAndCalculateOffsets();
         shader.Dispatch(detectBoundsKernel, totalParticles / 100, 1, 1);
         shader.Dispatch(externalKernel, totalParticles / 100, 1, 1);
         shader.Dispatch(densityKernel, totalParticles / 100, 1, 1);
         shader.Dispatch(pressureKernel, totalParticles / 100, 1, 1);
         shader.Dispatch(viscosityKernel, totalParticles / 100, 1, 1);
         shader.Dispatch(forceKernel, totalParticles / 100, 1, 1);
-        
+
+        _particleBuffer.GetData(particles);
+        _hashData.GetData(hashDataVect);
+        _offsetHashData.GetData(offsetHashData);
     }
 
     private void SetComputeVariables(float time)
@@ -207,7 +231,7 @@ public class SPH : MonoBehaviour
                 for (int z = 0; z < numToSpawn.z; z++)
                 {
                     Vector3 spawnPos = spawnPoint + new Vector3(x * particleRadius * 2, y * particleRadius * 2, z * particleRadius * 2);
-                    spawnPos += Random.onUnitSphere * particleRadius * spawnJitter;
+                    spawnPos += UnityEngine.Random.onUnitSphere * particleRadius * spawnJitter;
                     Particle p = new Particle
                     {
                         position = spawnPos
@@ -227,6 +251,8 @@ public class SPH : MonoBehaviour
         pressureKernel = shader.FindKernel("CalculatePressure");
         viscosityKernel = shader.FindKernel("CalculateViscosity");
         forceKernel = shader.FindKernel("ApplyForces");
+        spatialHashKernel = shader.FindKernel("GetSpacialHash");
+
 
         shader.SetBuffer(externalKernel, "_particles", _particleBuffer);
         shader.SetBuffer(detectBoundsKernel, "_particles", _particleBuffer);
@@ -234,7 +260,22 @@ public class SPH : MonoBehaviour
         shader.SetBuffer(pressureKernel, "_particles", _particleBuffer);
         shader.SetBuffer(viscosityKernel, "_particles", _particleBuffer);
         shader.SetBuffer(forceKernel, "_particles", _particleBuffer);
+        shader.SetBuffer(spatialHashKernel, "_particles", _particleBuffer);
 
+
+        shader.SetBuffer(spatialHashKernel, "hashData", _hashData);
+        shader.SetBuffer(densityKernel, "hashData", _hashData);
+        shader.SetBuffer(pressureKernel, "hashData", _hashData);
+        shader.SetBuffer(viscosityKernel, "hashData", _hashData);
+
+        shader.SetBuffer(spatialHashKernel, "hashOffsetData", _offsetHashData);
+        shader.SetBuffer(densityKernel, "hashOffsetData", _offsetHashData);
+        shader.SetBuffer(pressureKernel, "hashOffsetData", _offsetHashData);
+        shader.SetBuffer(viscosityKernel, "hashOffsetData", _offsetHashData);
+
+        bufferSorter = new GPUSort(sortingAlgorithm);
+        bufferSorter.SetBuffers(_hashData, _offsetHashData);
+         
     }
 
     private void OnDrawGizmos()

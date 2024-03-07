@@ -5968,7 +5968,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 154.3, y: 0}
   m_SizeDelta: {x: 200, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &711835711
@@ -9957,7 +9957,7 @@ MonoBehaviour:
   boundDamping: -0.3
   showSpheres: 1
   fixedTimestep: 1
-  numToSpawn: {x: 20, y: 20, z: 20}
+  numToSpawn: {x: 10, y: 10, z: 10}
   boxSize: {x: 11.06, y: 13.6, z: 8.3}
   boxCentre: {x: 4, y: 10, z: 3}
   spawnCenter: {x: -3.84, y: -4.45, z: -2.76}
@@ -10006,12 +10006,15 @@ MonoBehaviour:
   mouseRadius: 0
   particleMass: 1
   densityTarget: 630
-  pressureForce: 118
-  nearPressureForce: -2.25
+  pressureForce: -162.5
+  nearPressureForce: 5.72
   predictionIteration: 120
   viscosity: 0.06
   shader: {fileID: 7200000, guid: 1f25c4104f31085458f299190f2241e5, type: 3}
+  sortingAlgorithm: {fileID: 7200000, guid: 44d0b9a487f5ce6489a6c2a0b5f6c2b1, type: 3}
   particles: []
+  hashDataVect: []
+  offsetHashData: 
   lineRendMulti: 0
   transd: {fileID: 1624281822}
 --- !u!4 &1392038047
@@ -10023,8 +10026,8 @@ Transform:
   m_GameObject: {fileID: 1392038045}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 3.6, y: 2.6, z: 0}
-  m_LocalScale: {x: 15.079473, y: 11.1, z: 9.700514}
+  m_LocalPosition: {x: 3.6, y: 2.6, z: -0.54501}
+  m_LocalScale: {x: 12.215967, y: 11.572952, z: 10.790517}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1624281822}
@@ -14804,7 +14807,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 184, y: 0.08996582}
+  m_AnchoredPosition: {x: 184, y: 0.08984375}
   m_SizeDelta: {x: 346.8, y: -5.9798875}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &2050686230

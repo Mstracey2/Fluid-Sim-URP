@@ -16,7 +16,6 @@ public class RenderingUI : MonoBehaviour
         int count = uiGradientColours.Count - 1;
         for (int i = 0; i < uiGradientColours.Count; i++)
         {
-            Debug.Log(i);
             colourKeys[i].color = uiGradientColours[i].colour;
             
             alphaKeys[i].alpha = 1;

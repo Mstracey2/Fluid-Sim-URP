@@ -42,7 +42,7 @@ Shader "Unlit/Test"
                 float3 velocity;
                 float3 position;
                 float3 positionPrediction;
-                uint2 hashData;
+                uint3 hashData;
             };
 
             StructuredBuffer<Particle> _particlesBuffer;

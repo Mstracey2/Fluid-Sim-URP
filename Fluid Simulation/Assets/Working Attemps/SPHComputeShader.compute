@@ -4,6 +4,7 @@
 #pragma kernel CalculatePressure
 #pragma kernel CalculateViscosity
 #pragma kernel ApplyForces
+#pragma kernel GetSpacialHash
 
 #include "./SpatialHashing.hlsl"
 
@@ -14,11 +15,13 @@ struct Particle {
 	float3 velocity;
 	float3 position;
     float3 positionPrediction;
-    uint2 hashData;
+    uint3 hashData;
 };
 
 RWStructuredBuffer<Particle> _particles;
-RWStructuredBuffer<uint2> hashData;
+RWStructuredBuffer<uint3> hashData;
+RWStructuredBuffer<uint> hashOffsetData;
+
 float gravity;
 float particleMass;
 float boundDamping;
@@ -67,19 +70,17 @@ void CalculateExternalForces(uint3 id : SV_DISPATCHTHREADID)
 [numthreads(100, 1, 1)]
 void GetSpacialHash(uint3 id : SV_DISPATCHTHREADID)
 {
-    int3 convertedCellSpace = intCoord(_particles[id.x].positionPrediction, radius);
-    uint hashCoord = HashCoords(convertedCellSpace, particleLength);
-    _particles[id.x].hashData = uint2(id.x, hashCoord);
+    if (id.x >= particleLength)return;
+    
+    uint index = id.x;
+    hashOffsetData[id.x] = particleLength;
+    int3 convertedCellSpace = intCoord(_particles[index].positionPrediction, radius);
+    uint hash = Hash(convertedCellSpace);
+    uint Key = HashKey(hash, particleLength);
+    _particles[id.x].hashData = uint3(index,hash,Key);
+    hashData[id.x] =  uint3(index, hash, Key);;
 
 }
-
-[numthreads(100, 1, 1)]
-void SortHashData(uint3 id : SV_DISPATCHTHREADID)
-{
-
-}
-
-
 
 [numthreads(100, 1, 1)]
 void DetectBounds(uint3 id : SV_DISPATCHTHREADID)
@@ -115,7 +116,6 @@ void DetectBounds(uint3 id : SV_DISPATCHTHREADID)
     _particles[id.x].position = mul(worldMatrix, float4(posLocal, 1)).xyz;
     _particles[id.x].velocity = mul(worldMatrix, float4(velocityLocal, 0)).xyz;
     
-    //_particles[id.x].velocity = vel;
     _particles[id.x].positionPrediction = _particles[id.x].position + _particles[id.x].velocity * 1 / predictionIteration;
 }
 
@@ -211,11 +211,11 @@ float GetNearSharedPressure(float denA, float denB)
     return (pressure1, pressure2) / 2;
 }
 
-float DistanceIn3DSpace(float3 particlePos, float3 neighborPos)
+float2 DistanceIn3DSpace(float3 particlePos, float3 neighborPos)
 {
-    float3 particleDiff = (particlePos - neighborPos);
+    float3 particleDiff = ( neighborPos-particlePos);
     float particleOffset = dot(particleDiff, particleDiff);
-    return sqrt(particleOffset);
+    return (particleOffset, sqrt(particleOffset));
 }
 
 // Calculates the density of the particle, does so by getting the distance between particles, and the density is affected via the mass and gradient influence.
@@ -226,15 +226,47 @@ void CalculateDensity(uint id : SV_DispatchThreadID)
     float3 particlePos = _particles[id.x].positionPrediction;
     float dens = 0;
     float nearDens = 0;
-    for (int i = 0; i < particleLength; i++)
+    float radiusSqr = radius * radius;
+    int3 particleCell = intCoord(_particles[id.x].positionPrediction, radius);
+    
+    
+    for (int i = 0; i < 27; i++)
     {
-        if (id.x != i) continue;
-        float dist = DistanceIn3DSpace(particlePos, _particles[i].positionPrediction);
-        float gradientInfl = DensityKernal_SpikedGradient(dist);
-        dens += gradientInfl * particleMass;
-        gradientInfl = NearDensityKernal_GreaterSpikedGradient(dist);
-        nearDens += gradientInfl * particleMass;
-
+        uint neighborCellHash = Hash(particleCell + offsets3D[i]);
+        uint key = HashKey(neighborCellHash, particleLength);
+        uint currentOffsetKey = hashOffsetData[key];
+        while (currentOffsetKey < particleLength)
+        {
+            uint3 offsetCellData = hashData[currentOffsetKey];
+            currentOffsetKey++;
+            
+            if (offsetCellData[2] != key)
+            {
+                break;
+            }
+            if (offsetCellData[1] != neighborCellHash)
+            {
+                continue;
+            }
+            
+            
+            uint neighbor = offsetCellData[0];
+            float2 dist = DistanceIn3DSpace(particlePos, _particles[neighbor].positionPrediction);
+            
+            if (neighbor == id.x)
+            {
+                continue;
+            }
+            
+            if (dist[0] > radiusSqr)
+            {
+                continue;
+            }
+            float gradientInfl = DensityKernal_SpikedGradient(dist[1]);
+            dens += gradientInfl * particleMass;
+            gradientInfl = NearDensityKernal_GreaterSpikedGradient(dist[1]);
+            nearDens += gradientInfl * particleMass;
+        }
     }
     _particles[id.x].density = float2(dens,nearDens);
 	
@@ -248,17 +280,54 @@ void CalculatePressure(uint id : SV_DispatchThreadID)
     float3 particlePos = _particles[id.x].positionPrediction;
     float density = _particles[id.x].density;
     float3 pressureForce = 0;
-    for (int i = 0; i < particleLength; i++)
+    float radiusSqr = radius * radius;
+    int3 particleCell = intCoord(_particles[id.x].positionPrediction, radius);
+    
+    for (int i = 0; i < 27; i++)
     {
-        if (id.x == i) continue;
-        float dist = DistanceIn3DSpace(particlePos, _particles[i].positionPrediction);
-        float gradientInfl = DerivativeDensityKernal_DerivativeSpikedGradient(dist);
-        float3 dir = dist > 0 ? (_particles[i].positionPrediction - particlePos) / dist : float3(0, 1, 0);
-        pressureForce += dir * gradientInfl * GetSharedPressure(_particles[id.x].density[0], _particles[i].density[0]) / _particles[i].density[0];
-        gradientInfl = NearDerivativeDensityKernel_GreaterDerivativeSpikedGradient(dist);
-        pressureForce += dir * gradientInfl * GetNearSharedPressure(_particles[id.x].density[1], _particles[i].density[1]) / _particles[i].density[1];
+        uint neighborCellHash = Hash(particleCell + offsets3D[i]);
+        uint key = HashKey(neighborCellHash, particleLength);
+        uint currentOffsetKey = hashOffsetData[key];
+        
+        while (currentOffsetKey < particleLength)
+        {
+            uint3 offsetCellData = hashData[currentOffsetKey];
+            currentOffsetKey++;
+            
+            if (offsetCellData[2] != key)
+            {
+                break;
+            }
+            if (offsetCellData[1] != neighborCellHash)
+            {
+                continue;
+            }
+            
+            uint neighbor = offsetCellData[0];
+            float2 dist = DistanceIn3DSpace(particlePos, _particles[neighbor].positionPrediction);
+            
+            if (neighbor == id.x)
+            {
+                continue;
+            }
+            
+            if (dist[0] > radiusSqr)
+            {
+                continue;
+            }
+            
+        //    float gradientInfl = DerivativeDensityKernal_DerivativeSpikedGradient(dist[1]);
 
+        //    float3 dir = dist[1] > 0 ? (_particles[neighbor].positionPrediction - particlePos) / dist[1] : float3(0, 1, 0);
+
+        //    pressureForce += dir * gradientInfl * GetSharedPressure(_particles[id.x].density[0], _particles[i].density[0]) / _particles[i].density[0];
+
+        //    gradientInfl = NearDerivativeDensityKernel_GreaterDerivativeSpikedGradient(dist[1]);
+
+        //    pressureForce += dir * gradientInfl * GetNearSharedPressure(_particles[id.x].density[1], _particles[i].density[1]) / _particles[i].density[1];
+        }
     }
+   
     float3 acceleration = pressureForce / density;
     _particles[id.x].pressure = acceleration * timestep;
     
@@ -273,14 +342,47 @@ void CalculateViscosity(uint id : SV_DispatchThreadID)
     float3 viscosityForce = 0;
     float3 particlePos = _particles[id.x].positionPrediction;
     float3 currentVel = _particles[id.x].velocity;
-    for (int i = 0; i < particleLength; i++)
-    {
-        if (id.x == i) continue; // SIM DOES NOT WORK WITHOUT THIS AS IT WILL BREAK DUE TO INCLUDING ITSELF IN THE LOOP, RETURNING 0;
-        float dist = DistanceIn3DSpace(particlePos, _particles[i].positionPrediction);
-        float gradientInfl = ViscosityKernal_RoundedGradient(dist);
-        viscosityForce += (_particles[i].velocity - currentVel) * gradientInfl;
-    }
+    float radiusSqr = radius * radius;
+    int3 particleCell = intCoord(_particles[id.x].positionPrediction, radius);
     
+    for (int i = 0; i < 27; i++)
+    {
+        uint neighborCellHash = Hash(particleCell + offsets3D[i]);
+        uint key = HashKey(neighborCellHash, particleLength);
+        uint currentOffsetKey = hashOffsetData[key];
+        
+        while (currentOffsetKey < particleLength)
+        {
+            uint3 offsetCellData = hashData[currentOffsetKey];
+            currentOffsetKey++;
+            
+            if (offsetCellData[2] != key)
+            {
+                break;
+            }
+            if (offsetCellData[1] != neighborCellHash)
+            {
+                continue;
+            }
+            
+            uint neighbor = offsetCellData[0];
+            
+            if (neighbor == id.x)
+            {
+                continue;
+            }
+            
+            float2 dist = DistanceIn3DSpace(particlePos, _particles[neighbor].positionPrediction);
+            
+            if (dist[0] > radiusSqr)
+            {
+                continue;
+            }
+            
+            float gradientInfl = ViscosityKernal_RoundedGradient(dist[1]);
+            viscosityForce += (_particles[neighbor].velocity - currentVel) * gradientInfl;
+        }
+    }
     _particles[id.x].velocity += (viscosityForce * viscosityMulti) * timestep;
 
 }
@@ -297,5 +399,4 @@ void ApplyForces(uint id : SV_DispatchThreadID)
     _particles[id.x].position += (_particles[id.x].velocity) * timestep;
      
 }
-
 
