@@ -62,6 +62,7 @@ public class SPH : MonoBehaviour
     public float nearPressureForce;
     public float predictionIteration;
     public float viscosity;
+    public float denMod;
 
     [Header("Compute")]
     public ComputeShader shader;
@@ -113,6 +114,12 @@ public class SPH : MonoBehaviour
 
         hashDataVect = new uint3[totalParticles];
         offsetHashData = new uint[totalParticles];
+
+        for(int i = 0;  i < offsetHashData.Length; i++)
+        {
+            offsetHashData[i] = (uint)totalParticles;
+        }
+
         _hashData = new ComputeBuffer(totalParticles, 12);
         _hashData.SetData(hashDataVect);
         _offsetHashData = new ComputeBuffer(totalParticles, 4);
@@ -173,20 +180,23 @@ public class SPH : MonoBehaviour
         float timeStepper = frames / numOfParticleCalc * timestep;
         SetComputeVariables(timeStepper);
 
-        
 
-        shader.Dispatch(spatialHashKernel, totalParticles / 100, 1, 1);
-        bufferSorter.SortAndCalculateOffsets();
-        shader.Dispatch(detectBoundsKernel, totalParticles / 100, 1, 1);
-        shader.Dispatch(externalKernel, totalParticles / 100, 1, 1);
-        shader.Dispatch(densityKernel, totalParticles / 100, 1, 1);
-        shader.Dispatch(pressureKernel, totalParticles / 100, 1, 1);
-        shader.Dispatch(viscosityKernel, totalParticles / 100, 1, 1);
-        shader.Dispatch(forceKernel, totalParticles / 100, 1, 1);
+        for (int i = 0; i < numOfParticleCalc; i++)
+        {
+            shader.Dispatch(spatialHashKernel, totalParticles / 100, 1, 1);
+            bufferSorter.SortAndCalculateOffsets();
+            shader.Dispatch(detectBoundsKernel, totalParticles / 100, 1, 1);
+            shader.Dispatch(externalKernel, totalParticles / 100, 1, 1);
+            shader.Dispatch(densityKernel, totalParticles / 100, 1, 1);
+            shader.Dispatch(pressureKernel, totalParticles / 100, 1, 1);
+            shader.Dispatch(viscosityKernel, totalParticles / 100, 1, 1);
+            shader.Dispatch(forceKernel, totalParticles / 100, 1, 1);
+        }
 
-        _particleBuffer.GetData(particles);
-        _hashData.GetData(hashDataVect);
-        _offsetHashData.GetData(offsetHashData);
+
+        //_particleBuffer.GetData(particles);
+        //_hashData.GetData(hashDataVect);
+        //_offsetHashData.GetData(offsetHashData);
     }
 
     private void SetComputeVariables(float time)
@@ -215,6 +225,7 @@ public class SPH : MonoBehaviour
         shader.SetBool("push", push);
         shader.SetBool("pull", pull);
         shader.SetFloat("gradientChoice", gradientType);
+        shader.SetFloat("densityMod", denMod);
 
         material.SetFloat("maxVel", particleMaxVelocity);
         material.SetFloat("gradientType", gradientType);
@@ -332,5 +343,14 @@ public class SPH : MonoBehaviour
         texture.SetPixels(colourMap);
         texture.Apply();
         material.SetTexture("ColourMap", texture);
+    }
+
+
+    void OnDestroy()
+    {
+        _argsBuffer.Release();
+        _particleBuffer.Release();
+        _offsetHashData.Release();
+        _hashData.Release();
     }
 }

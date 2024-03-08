@@ -9957,7 +9957,7 @@ MonoBehaviour:
   boundDamping: -0.3
   showSpheres: 1
   fixedTimestep: 1
-  numToSpawn: {x: 10, y: 10, z: 10}
+  numToSpawn: {x: 30, y: 30, z: 30}
   boxSize: {x: 11.06, y: 13.6, z: 8.3}
   boxCentre: {x: 4, y: 10, z: 3}
   spawnCenter: {x: -3.84, y: -4.45, z: -2.76}
@@ -10006,10 +10006,11 @@ MonoBehaviour:
   mouseRadius: 0
   particleMass: 1
   densityTarget: 630
-  pressureForce: -162.5
-  nearPressureForce: 5.72
+  pressureForce: 1
+  nearPressureForce: 1
   predictionIteration: 120
   viscosity: 0.06
+  denMod: 1
   shader: {fileID: 7200000, guid: 1f25c4104f31085458f299190f2241e5, type: 3}
   sortingAlgorithm: {fileID: 7200000, guid: 44d0b9a487f5ce6489a6c2a0b5f6c2b1, type: 3}
   particles: []
@@ -10026,8 +10027,8 @@ Transform:
   m_GameObject: {fileID: 1392038045}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 3.6, y: 2.6, z: -0.54501}
-  m_LocalScale: {x: 12.215967, y: 11.572952, z: 10.790517}
+  m_LocalPosition: {x: 3.6, y: 7.4, z: 6.6}
+  m_LocalScale: {x: 21.649471, y: 20.509901, z: 19.12325}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1624281822}
