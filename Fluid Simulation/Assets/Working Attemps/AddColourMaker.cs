@@ -10,7 +10,6 @@ public class AddColourMaker : MonoBehaviour
     public void AddGradientColour()
     {
         GameObject newColourMaker = Instantiate(colourMaker, contentsParent.transform);
-        newColourMaker.transform.SetSiblingIndex(2);
         ColourMaker maker = newColourMaker.GetComponent<ColourMaker>();
         maker.rendUI = rendUI;
     }
