@@ -131,7 +131,7 @@ public class SPH : MonoBehaviour
 
     private void FixedUpdate()
     {
-        if (fixedTimestep)
+        if (fixedTimestep && Time.frameCount > 10)
         {
             SimulateParticles(Time.fixedDeltaTime);
         }
@@ -180,7 +180,6 @@ public class SPH : MonoBehaviour
         float timeStepper = frames / numOfParticleCalc * timestep;
         SetComputeVariables(timeStepper);
 
-
         for (int i = 0; i < numOfParticleCalc; i++)
         {
             shader.Dispatch(spatialHashKernel, totalParticles / 100, 1, 1);
@@ -194,9 +193,9 @@ public class SPH : MonoBehaviour
         }
 
 
-        //_particleBuffer.GetData(particles);
-        //_hashData.GetData(hashDataVect);
-        //_offsetHashData.GetData(offsetHashData);
+        _particleBuffer.GetData(particles);
+        _hashData.GetData(hashDataVect);
+        _offsetHashData.GetData(offsetHashData);
     }
 
     private void SetComputeVariables(float time)
@@ -257,22 +256,21 @@ public class SPH : MonoBehaviour
     private void FindKernelsAndSetBuffers()
     {
         externalKernel = shader.FindKernel("CalculateExternalForces");
-        detectBoundsKernel = shader.FindKernel("DetectBounds");
         densityKernel = shader.FindKernel("CalculateDensity");
         pressureKernel = shader.FindKernel("CalculatePressure");
         viscosityKernel = shader.FindKernel("CalculateViscosity");
         forceKernel = shader.FindKernel("ApplyForces");
         spatialHashKernel = shader.FindKernel("GetSpacialHash");
+        detectBoundsKernel = shader.FindKernel("DetectBounds");
 
 
         shader.SetBuffer(externalKernel, "_particles", _particleBuffer);
-        shader.SetBuffer(detectBoundsKernel, "_particles", _particleBuffer);
         shader.SetBuffer(densityKernel, "_particles", _particleBuffer);
         shader.SetBuffer(pressureKernel, "_particles", _particleBuffer);
         shader.SetBuffer(viscosityKernel, "_particles", _particleBuffer);
         shader.SetBuffer(forceKernel, "_particles", _particleBuffer);
         shader.SetBuffer(spatialHashKernel, "_particles", _particleBuffer);
-
+        shader.SetBuffer(detectBoundsKernel, "_particles", _particleBuffer);
 
         shader.SetBuffer(spatialHashKernel, "hashData", _hashData);
         shader.SetBuffer(densityKernel, "hashData", _hashData);
