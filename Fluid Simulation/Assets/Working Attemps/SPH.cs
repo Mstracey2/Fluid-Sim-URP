@@ -163,6 +163,8 @@ public class SPH : MonoBehaviour
             shader.Dispatch(forceKernel, totalParticles / 100, 1, 1);
         }
 
+        _particleBuffer.GetData(particles);
+
         produceColourGradientMap();
     }
 
