@@ -67,7 +67,7 @@ void CalculateExternalForces(uint3 id : SV_DISPATCHTHREADID)
             _particles[id.x].velocity += dir * pushPullForce;
         }
     }
-    
+    _particles[id.x].positionPrediction = _particles[id.x].position + _particles[id.x].velocity * 1 / predictionIteration;
     
 }
 
@@ -75,14 +75,14 @@ void CalculateExternalForces(uint3 id : SV_DISPATCHTHREADID)
 void GetSpacialHash(uint3 id : SV_DISPATCHTHREADID)
 {
     if (id.x >= particleLength)return;
-    
+
     uint index = id.x;
-    hashOffsetData[id.x] = particleLength;
+    hashOffsetData[index] = particleLength;
     int3 convertedCellSpace = intCoord(_particles[index].positionPrediction, radius);
     uint hash = Hash(convertedCellSpace);
     uint Key = HashKey(hash, particleLength);
-    //_particles[id.x].hashData = uint3(index,hash,Key);
-    hashData[id.x] =  uint3(index, hash, Key);;
+    _particles[index].hashData = uint3(index,hash,Key);
+    hashData[index] =  uint3(index, hash, Key);;
 
 }
 
@@ -120,7 +120,7 @@ void DetectBounds(uint3 id : SV_DISPATCHTHREADID)
     _particles[id.x].position = mul(worldMatrix, float4(posLocal, 1)).xyz;
     _particles[id.x].velocity = mul(worldMatrix, float4(velocityLocal, 0)).xyz;
     
-    _particles[id.x].positionPrediction = _particles[id.x].position + _particles[id.x].velocity * 1 / predictionIteration;
+    
 }
 
 //This Kernal type is used for the calculation of density. Theoretically, the peak is a spiked top with a harsh decline
@@ -288,6 +288,7 @@ void CalculatePressure(uint id : SV_DispatchThreadID)
         uint key = HashKey(neighborCellHash, particleLength);
         uint currentOffsetKey = hashOffsetData[key];
         
+        
         while (currentOffsetKey < particleLength)
         {
             uint3 offsetCellData = hashData[currentOffsetKey];
@@ -322,10 +323,6 @@ void CalculatePressure(uint id : SV_DispatchThreadID)
             pressureForce += dir * gradientInfl * GetSharedPressure(_particles[id.x].density[0], _particles[neighbor].density[0]) / _particles[neighbor].density[0];
             gradientInfl = NearDerivativeDensityKernel_GreaterDerivativeSpikedGradient(dist[1]);
             pressureForce += dir * gradientInfl * GetNearSharedPressure(_particles[id.x].density[1], _particles[neighbor].density[1]) / _particles[neighbor].density[1];
-            
-            hi += 1;
-            _particles[id.x].hashData = uint3(hi, hi, hi);
-            
         }
     }
     

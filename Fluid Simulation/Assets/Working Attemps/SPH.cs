@@ -131,7 +131,7 @@ public class SPH : MonoBehaviour
 
     private void FixedUpdate()
     {
-        if (fixedTimestep && Time.frameCount > 10)
+        if (fixedTimestep)
         {
             SimulateParticles(Time.fixedDeltaTime);
         }
@@ -175,22 +175,29 @@ public class SPH : MonoBehaviour
         lineRend.SetPosition(14, (new Vector3(max.x, min.y, max.z)));
         lineRend.SetPosition(15, (new Vector3(max.x, min.y, min.z)));
     }
+
     private void SimulateParticles(float frames)
     {
         float timeStepper = frames / numOfParticleCalc * timestep;
         SetComputeVariables(timeStepper);
 
-        for (int i = 0; i < numOfParticleCalc; i++)
-        {
-            shader.Dispatch(spatialHashKernel, totalParticles / 100, 1, 1);
-            bufferSorter.SortAndCalculateOffsets();
-            shader.Dispatch(detectBoundsKernel, totalParticles / 100, 1, 1);
-            shader.Dispatch(externalKernel, totalParticles / 100, 1, 1);
-            shader.Dispatch(densityKernel, totalParticles / 100, 1, 1);
-            shader.Dispatch(pressureKernel, totalParticles / 100, 1, 1);
-            shader.Dispatch(viscosityKernel, totalParticles / 100, 1, 1);
-            shader.Dispatch(forceKernel, totalParticles / 100, 1, 1);
-        }
+            
+
+            if(Time.frameCount > 10)
+            {
+                shader.Dispatch(externalKernel, totalParticles / 100, 1, 1);
+                shader.Dispatch(spatialHashKernel, totalParticles / 100, 1, 1);
+                bufferSorter.SortAndCalculateOffsets();
+
+                
+                shader.Dispatch(densityKernel, totalParticles / 100, 1, 1);
+                shader.Dispatch(pressureKernel, totalParticles / 100, 1, 1);
+                shader.Dispatch(viscosityKernel, totalParticles / 100, 1, 1);
+                shader.Dispatch(forceKernel, totalParticles / 100, 1, 1);
+                shader.Dispatch(detectBoundsKernel, totalParticles / 100, 1, 1);
+            }
+
+
 
 
         _particleBuffer.GetData(particles);
