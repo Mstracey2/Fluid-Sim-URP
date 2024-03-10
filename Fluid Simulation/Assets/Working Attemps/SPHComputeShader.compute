@@ -281,7 +281,6 @@ void CalculatePressure(uint id : SV_DispatchThreadID)
     float3 pressureForce = 0;
     float radiusSqr = radius * radius;
     int3 particleCell = intCoord(_particles[id.x].positionPrediction, radius);
-    uint hi;
     for (int i = 0; i < 27; i++)
     {
         uint neighborCellHash = Hash(particleCell + offsets3D[i]);
