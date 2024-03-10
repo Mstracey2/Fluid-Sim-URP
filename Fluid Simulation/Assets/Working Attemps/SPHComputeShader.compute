@@ -157,7 +157,7 @@ float DerivativeDensityKernal_DerivativeSpikedGradient(float dist)
     {
         float scale = 15 / (pow(radius, 5) * pi);
         float vel = radius - dist;
-        return -vel * scale;
+        return vel * scale;
     }
     return 0;
 }
@@ -168,7 +168,7 @@ float NearDerivativeDensityKernel_GreaterDerivativeSpikedGradient(float dist)
     {
         float scale = 45 / (pow(radius, 6) * pi);
         float vel = radius - dist;
-        return -vel * vel * scale;
+        return vel * vel * scale;
     }
     return 0;
 }
@@ -257,6 +257,10 @@ void CalculateDensity(uint id : SV_DispatchThreadID)
             uint neighbor = offsetCellData[0];
             float2 dist = DistanceIn3DSpace(particlePos, _particles[neighbor].positionPrediction);
         
+            //if (neighbor == id.x)
+            //{
+            //    continue;
+            //}
             
             if (dist[0] > radiusSqr)
             {
@@ -392,7 +396,7 @@ void ApplyForces(uint id : SV_DispatchThreadID)
     
     _particles[id.x].velocity += _particles[id.x].external;
     
-    _particles[id.x].velocity += _particles[id.x].pressure ;
+    _particles[id.x].velocity += _particles[id.x].pressure;
 
     _particles[id.x].position += (_particles[id.x].velocity) * timestep;
      

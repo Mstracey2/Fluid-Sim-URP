@@ -133,8 +133,11 @@ public class SPH : MonoBehaviour
     {
         if (fixedTimestep)
         {
-
+            for (int i = 0; i < numOfParticleCalc; i++)
+            {
                 SimulateParticles(Time.fixedDeltaTime);
+            }
+
         }
     }
 
@@ -187,11 +190,12 @@ public class SPH : MonoBehaviour
         shader.Dispatch(spatialHashKernel, totalParticles / 100, 1, 1);
         bufferSorter.SortAndCalculateOffsets();
 
+        shader.Dispatch(detectBoundsKernel, totalParticles / 100, 1, 1);
         shader.Dispatch(densityKernel, totalParticles / 100, 1, 1);
         shader.Dispatch(pressureKernel, totalParticles / 100, 1, 1);
         shader.Dispatch(viscosityKernel, totalParticles / 100, 1, 1);
         shader.Dispatch(forceKernel, totalParticles / 100, 1, 1);
-        shader.Dispatch(detectBoundsKernel, totalParticles / 100, 1, 1);
+        
 
         //_particleBuffer.GetData(particles);
         //_hashData.GetData(hashDataVect);
