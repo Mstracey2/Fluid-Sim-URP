@@ -21,7 +21,6 @@ public struct Particle
 
 public class SPH : MonoBehaviour
 {
-    public event System.Action SimulationStepCompleted;
     [Header("Setup")]
     public float gravity;
     public float boundDamping = 0.2f;
@@ -137,7 +136,6 @@ public class SPH : MonoBehaviour
             for (int i = 0; i < numOfParticleCalc; i++)
             {
                 SimulateParticles(Time.fixedDeltaTime);
-                SimulationStepCompleted?.Invoke();
             }
             
         }
@@ -187,15 +185,17 @@ public class SPH : MonoBehaviour
         float timeStepper = frames / numOfParticleCalc * timestep;
         SetComputeVariables(timeStepper);
         shader.Dispatch(externalKernel, totalParticles / 100, 1, 1);
+
+
         shader.Dispatch(spatialHashKernel, totalParticles / 100, 1, 1);
         bufferSorter.SortAndCalculateOffsets();
-
 
         shader.Dispatch(densityKernel, totalParticles / 100, 1, 1);
         shader.Dispatch(pressureKernel, totalParticles / 100, 1, 1);
         shader.Dispatch(viscosityKernel, totalParticles / 100, 1, 1);
         shader.Dispatch(forceKernel, totalParticles / 100, 1, 1);
         shader.Dispatch(detectBoundsKernel, totalParticles / 100, 1, 1);
+
         _particleBuffer.GetData(particles);
         _hashData.GetData(hashDataVect);
         _offsetHashData.GetData(offsetHashData);
@@ -284,6 +284,7 @@ public class SPH : MonoBehaviour
         shader.SetBuffer(densityKernel, "hashOffsetData", _offsetHashData);
         shader.SetBuffer(pressureKernel, "hashOffsetData", _offsetHashData);
         shader.SetBuffer(viscosityKernel, "hashOffsetData", _offsetHashData);
+
 
         bufferSorter = new GPUSort(sortingAlgorithm);
         bufferSorter.SetBuffers(_hashData, _offsetHashData);

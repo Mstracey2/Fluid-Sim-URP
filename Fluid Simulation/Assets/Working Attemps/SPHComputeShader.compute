@@ -81,7 +81,7 @@ void GetSpacialHash(uint3 id : SV_DISPATCHTHREADID)
     int3 convertedCellSpace = intCoord(_particles[index].positionPrediction, radius);
     uint hash = Hash(convertedCellSpace);
     uint Key = HashKey(hash, particleLength);
-    _particles[index].hashData = uint3(index,hash,Key);
+    //_particles[index].hashData = uint3(index,hash,Key);
     hashData[index] =  uint3(index, hash, Key);;
 
 }
@@ -268,7 +268,7 @@ void CalculateDensity(uint id : SV_DispatchThreadID)
             nearDens = gradientInfl * particleMass;
         }
     }
-    _particles[id.x].density = float2(dens, nearDens); // * densityMod;
+    _particles[id.x].density = float2(dens, nearDens);
 	
 }
 
@@ -316,7 +316,7 @@ void CalculatePressure(uint id : SV_DispatchThreadID)
             {
                 continue;
             }
-
+            _particles[id.x].hashData += uint3(1,1,1);
             float3 dir = dist[1] > 0 ? (_particles[neighbor].positionPrediction - particlePos) / dist[1] : float3(0, 1, 0);
             float gradientInfl = DerivativeDensityKernal_DerivativeSpikedGradient(dist[1]);
             pressureForce += dir * gradientInfl * GetSharedPressure(_particles[id.x].density[0], _particles[neighbor].density[0]) / _particles[neighbor].density[0];
