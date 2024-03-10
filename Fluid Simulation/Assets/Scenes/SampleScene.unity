@@ -9953,11 +9953,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0b498a37571a63749b7f766dea868fdf, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  gravity: -10
+  gravity: -100
   boundDamping: -0.3
   showSpheres: 1
   fixedTimestep: 1
-  numToSpawn: {x: 10, y: 10, z: 10}
+  numToSpawn: {x: 20, y: 20, z: 20}
   boxSize: {x: 11.06, y: 13.6, z: 8.3}
   boxCentre: {x: 4, y: 10, z: 3}
   spawnCenter: {x: -3.84, y: -4.45, z: -2.76}
@@ -10005,8 +10005,8 @@ MonoBehaviour:
   pushPullForce: 0
   mouseRadius: 0
   particleMass: 1
-  densityTarget: 0
-  pressureForce: 0
+  densityTarget: 650
+  pressureForce: 0.07
   nearPressureForce: 0
   predictionIteration: 120
   viscosity: 0
@@ -10027,8 +10027,8 @@ Transform:
   m_GameObject: {fileID: 1392038045}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 7.742317, y: 7.334782, z: 6.8388853}
+  m_LocalPosition: {x: 0, y: 0, z: 2.0091}
+  m_LocalScale: {x: 3.0205102, y: 7.334782, z: 2.8206298}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1624281822}
