@@ -95,7 +95,7 @@ public class SPH : MonoBehaviour
 
     private void Awake()
     {
-        
+       
         lineRend = GetComponent<LineRenderer>();
         lineRend.positionCount = 16;
         SpawnParticlesInBox();
@@ -143,6 +143,7 @@ public class SPH : MonoBehaviour
 
     private void Update()
     {
+
         CalculateBoxVertices();
         mouseRefCentre = mouseSphereRef.transform.position;
         boxSize = transform.localScale;
@@ -180,22 +181,24 @@ public class SPH : MonoBehaviour
         lineRend.SetPosition(15, (new Vector3(max.x, min.y, min.z)));
     }
 
+    int thread = 100;
+
     private void SimulateParticles(float frames)
     {
-        float timeStepper = frames / numOfParticleCalc * timestep;
+        float timeStepper = Time.fixedDeltaTime / numOfParticleCalc * timestep;
         SetComputeVariables(timeStepper);
-        shader.Dispatch(externalKernel, totalParticles / 100, 1, 1);
 
+        shader.Dispatch(externalKernel, totalParticles / thread, 1, 1);
 
-        shader.Dispatch(spatialHashKernel, totalParticles / 100, 1, 1);
+        shader.Dispatch(spatialHashKernel, totalParticles / thread, 1, 1);
         bufferSorter.SortAndCalculateOffsets();
 
-        shader.Dispatch(detectBoundsKernel, totalParticles / 100, 1, 1);
-        shader.Dispatch(densityKernel, totalParticles / 100, 1, 1);
-        shader.Dispatch(pressureKernel, totalParticles / 100, 1, 1);
-        shader.Dispatch(viscosityKernel, totalParticles / 100, 1, 1);
-        shader.Dispatch(forceKernel, totalParticles / 100, 1, 1);
         
+        shader.Dispatch(densityKernel, totalParticles / thread, 1 , 1);
+        shader.Dispatch(pressureKernel, totalParticles / thread, 1 , 1);
+        shader.Dispatch(viscosityKernel, totalParticles / thread, 1 , 1);
+        shader.Dispatch(forceKernel, totalParticles / thread, 1 , 1);
+        //shader.Dispatch(detectBoundsKernel, totalParticles / thread, 1, 1);
 
         //_particleBuffer.GetData(particles);
         //_hashData.GetData(hashDataVect);
@@ -204,13 +207,15 @@ public class SPH : MonoBehaviour
 
     private void SetComputeVariables(float time)
     {
+
         ProduceColourGradientMap();
         shader.SetVector("boxSize", boxSize);
+        shader.SetMatrix("worldMatrix", transform.localToWorldMatrix);
+        shader.SetMatrix("localMatrix", transform.worldToLocalMatrix);
         shader.SetFloat("timestep", time);
         shader.SetInt("particleLength", totalParticles);
         shader.SetFloat("particleMass", particleMass);
         shader.SetFloat("pi", Mathf.PI);
-        shader.SetVector("boxSize", boxSize);
         shader.SetFloat("gravity", gravity);
         shader.SetFloat("radius", particleRadius);
         shader.SetFloat("boundDamping", boundDamping);
@@ -265,7 +270,7 @@ public class SPH : MonoBehaviour
         viscosityKernel = shader.FindKernel("CalculateViscosity");
         forceKernel = shader.FindKernel("ApplyForces");
         spatialHashKernel = shader.FindKernel("GetSpacialHash");
-        detectBoundsKernel = shader.FindKernel("DetectBounds");
+       //detectBoundsKernel = shader.FindKernel("DetectBounds");
 
 
         shader.SetBuffer(externalKernel, "_particles", _particleBuffer);
@@ -274,7 +279,7 @@ public class SPH : MonoBehaviour
         shader.SetBuffer(viscosityKernel, "_particles", _particleBuffer);
         shader.SetBuffer(forceKernel, "_particles", _particleBuffer);
         shader.SetBuffer(spatialHashKernel, "_particles", _particleBuffer);
-        shader.SetBuffer(detectBoundsKernel, "_particles", _particleBuffer);
+        //shader.SetBuffer(detectBoundsKernel, "_particles", _particleBuffer);
 
         shader.SetBuffer(spatialHashKernel, "hashData", _hashData);
         shader.SetBuffer(densityKernel, "hashData", _hashData);

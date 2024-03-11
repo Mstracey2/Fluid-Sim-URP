@@ -4,7 +4,7 @@
 #pragma kernel CalculateViscosity
 #pragma kernel ApplyForces
 #pragma kernel GetSpacialHash
-#pragma kernel DetectBounds
+//#pragma kernel DetectBounds
 
 #include "./SpatialHashing.hlsl"
 
@@ -49,9 +49,9 @@ float densityMod;
 static const int xThreads = 100;
 
 [numthreads(xThreads, 1, 1)]
-
 void CalculateExternalForces(uint3 id : SV_DISPATCHTHREADID)
 {
+    
     float3 particleOffset = (_particles[id.x].positionPrediction - mousePos);
     float partDis = dot(particleOffset, particleOffset);
     float dist = sqrt(partDis);
@@ -86,14 +86,13 @@ void GetSpacialHash(uint3 id : SV_DISPATCHTHREADID)
 
 }
 
-[numthreads(xThreads, 1, 1)]
-void DetectBounds(uint3 id : SV_DISPATCHTHREADID)
+//[numthreads(xThreads, 1, 1)]
+void DetectBounds(uint idex)
 {
-    if (id.x >= particleLength) return;
     
     // Transform position/velocity to the local space
-    float3 posLocal = mul(localMatrix, float4(_particles[id.x].position, 1)).xyz;
-    float3 velocityLocal = mul(localMatrix, float4(_particles[id.x].velocity, 0)).xyz;
+    float3 posLocal = mul(localMatrix, float4(_particles[idex].position, 1)).xyz;
+    float3 velocityLocal = mul(localMatrix, float4(_particles[idex].velocity, 0)).xyz;
     
     //get the distance of boxes axises
     const float3 halfSize = 0.5;
@@ -117,8 +116,8 @@ void DetectBounds(uint3 id : SV_DISPATCHTHREADID)
     }
     
     
-    _particles[id.x].position = mul(worldMatrix, float4(posLocal, 1)).xyz;
-    _particles[id.x].velocity = mul(worldMatrix, float4(velocityLocal, 0)).xyz;
+    _particles[idex].position = mul(worldMatrix, float4(posLocal, 1)).xyz;
+    _particles[idex].velocity = mul(worldMatrix, float4(velocityLocal, 0)).xyz;
     
     
 }
@@ -157,7 +156,7 @@ float DerivativeDensityKernal_DerivativeSpikedGradient(float dist)
     {
         float scale = 15 / (pow(radius, 5) * pi);
         float vel = radius - dist;
-        return vel * scale;
+        return -vel * scale;
     }
     return 0;
 }
@@ -168,7 +167,7 @@ float NearDerivativeDensityKernel_GreaterDerivativeSpikedGradient(float dist)
     {
         float scale = 45 / (pow(radius, 6) * pi);
         float vel = radius - dist;
-        return vel * vel * scale;
+        return -vel * vel * scale;
     }
     return 0;
 }
@@ -205,14 +204,14 @@ float GetSharedPressure(float denA, float denB)
 {
     float pressure1 = GetPressureFromDensity(denA);
     float pressure2 = GetPressureFromDensity(denB);
-    return (pressure1, pressure2) / 2;
+    return (pressure1 + pressure2) / 2;
 }
 
 float GetNearSharedPressure(float denA, float denB)
 {
     float pressure1 = NearPressureFromDensity(denA);
     float pressure2 = NearPressureFromDensity(denB);
-    return (pressure1, pressure2) / 2;
+    return (pressure1 + pressure2) / 2;
 }
 
 float2 DistanceIn3DSpace(float3 particlePos, float3 neighborPos)
@@ -267,12 +266,12 @@ void CalculateDensity(uint id : SV_DispatchThreadID)
                 continue;
             }
             float gradientInfl = DensityKernal_SpikedGradient(dist[1]);
-            dens = gradientInfl * particleMass;
+            dens = gradientInfl;
             gradientInfl = NearDensityKernal_GreaterSpikedGradient(dist[1]);
-            nearDens = gradientInfl * particleMass;
+            nearDens = gradientInfl ;
         }
     }
-    _particles[id.x].density = float2(dens, nearDens);
+    _particles[id.x].density = float2(dens, nearDens) ;
 	
 }
 
@@ -285,7 +284,7 @@ void CalculatePressure(uint id : SV_DispatchThreadID)
     float3 pressureForce = 0;
     float radiusSqr = radius * radius;
     int3 particleCell = intCoord(_particles[id.x].positionPrediction, radius);
-    _particles[id.x].hashData = uint3(0, 0, 0);
+    
     for (int i = 0; i < 27; i++)
     {
         uint neighborCellHash = Hash(particleCell + offsets3D[i]);
@@ -321,7 +320,7 @@ void CalculatePressure(uint id : SV_DispatchThreadID)
             {
                 continue;
             }
-            _particles[id.x].hashData += uint3(1,1,1);
+            
             float3 dir = dist[1] > 0 ? (_particles[neighbor].positionPrediction - particlePos) / dist[1] : float3(0, 1, 0);
             float gradientInfl = DerivativeDensityKernal_DerivativeSpikedGradient(dist[1]);
             pressureForce += dir * gradientInfl * GetSharedPressure(_particles[id.x].density[0], _particles[neighbor].density[0]) / _particles[neighbor].density[0];
@@ -331,7 +330,7 @@ void CalculatePressure(uint id : SV_DispatchThreadID)
     }
     
     float3 acceleration = pressureForce / _particles[id.x].density[0];
-    _particles[id.x].pressure = acceleration * timestep;
+    _particles[id.x].velocity += acceleration * timestep;
 
 }
 
@@ -394,11 +393,12 @@ void ApplyForces(uint id : SV_DispatchThreadID)
 {
     _particles[id.x].external = float3(0, gravity / particleMass, 0) * timestep;
     
-    _particles[id.x].velocity += _particles[id.x].external;
+    _particles[id.x].velocity += _particles[id.x].external ;
     
-    _particles[id.x].velocity += _particles[id.x].pressure;
+    //_particles[id.x].velocity += _particles[id.x].pressure * timestep;
 
     _particles[id.x].position += (_particles[id.x].velocity) * timestep;
+    DetectBounds(id.x);
      
 }
 
