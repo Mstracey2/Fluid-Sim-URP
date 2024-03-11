@@ -330,7 +330,7 @@ void CalculatePressure(uint id : SV_DispatchThreadID)
     }
     
     float3 acceleration = pressureForce / _particles[id.x].density[0];
-    _particles[id.x].velocity += acceleration * timestep;
+    _particles[id.x].pressure += acceleration * timestep;
 
 }
 
@@ -395,7 +395,7 @@ void ApplyForces(uint id : SV_DispatchThreadID)
     
     _particles[id.x].velocity += _particles[id.x].external ;
     
-    //_particles[id.x].velocity += _particles[id.x].pressure * timestep;
+    _particles[id.x].velocity += _particles[id.x].pressure ;
 
     _particles[id.x].position += (_particles[id.x].velocity) * timestep;
     DetectBounds(id.x);
