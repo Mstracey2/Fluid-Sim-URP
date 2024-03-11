@@ -133,7 +133,7 @@ float DerivativeDensityKernal_DerivativeSpikedGradient(float dist)
     {
         float scale = 15 / (pow(radius, 5) * pi);
         float vel = radius - dist;
-        return vel * scale;
+        return -vel * scale;
     }
     return 0;
 }
@@ -181,14 +181,14 @@ float GetSharedPressure(float denA, float denB)
 {
     float pressure1 = GetPressureFromDensity(denA);
     float pressure2 = GetPressureFromDensity(denB);
-    return (pressure1, pressure2) / 2;
+    return (pressure1+ pressure2) / 2;
 }
 
 float GetNearSharedPressure(float denA, float denB)
 {
     float pressure1 = NearPressureFromDensity(denA);
     float pressure2 = NearPressureFromDensity(denB);
-    return (pressure1, pressure2) / 2;
+    return (pressure1+ pressure2) / 2;
 }
 
 float DistanceIn3DSpace(float3 particlePos, float3 neighborPos)
