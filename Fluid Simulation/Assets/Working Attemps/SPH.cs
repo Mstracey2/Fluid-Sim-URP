@@ -56,13 +56,11 @@ public class SPH : MonoBehaviour
     private bool push;
 
     [Header("Fluid Constants")]
-    public float particleMass = 1f;
     public float densityTarget;
     public float pressureForce;
     public float nearPressureForce;
     public float predictionIteration;
     public float viscosity;
-    public float denMod;
 
     [Header("Compute")]
     public ComputeShader shader;
@@ -134,8 +132,8 @@ public class SPH : MonoBehaviour
     {
         if (fixedTimestep)
         {
-            shader.SetMatrix("worldMatrix", transform.localToWorldMatrix);
-            shader.SetMatrix("localMatrix", transform.worldToLocalMatrix);
+            float timeStepper = Time.fixedDeltaTime / numOfParticleCalc * timestep;
+            SetComputeVariables(timeStepper);
             for (int i = 0; i < numOfParticleCalc; i++)
             {
 
@@ -147,8 +145,8 @@ public class SPH : MonoBehaviour
 
     private void Update()
     {
-
         //CalculateBoxVertices();
+        CalculateBoxVertices();
         mouseRefCentre = mouseSphereRef.transform.position;
         boxSize = transform.localScale;
         boxCentre = transform.localPosition;
@@ -213,12 +211,10 @@ public class SPH : MonoBehaviour
     {
 
         ProduceColourGradientMap();
-        shader.SetVector("boxSize", boxSize);
         shader.SetMatrix("worldMatrix", transform.localToWorldMatrix);
         shader.SetMatrix("localMatrix", transform.worldToLocalMatrix);
         shader.SetFloat("timestep", time);
         shader.SetInt("particleLength", totalParticles);
-        shader.SetFloat("particleMass", particleMass);
         shader.SetFloat("pi", Mathf.PI);
         shader.SetFloat("gravity", gravity);
         shader.SetFloat("radius", particleRadius);
@@ -228,19 +224,29 @@ public class SPH : MonoBehaviour
         shader.SetFloat("nearPressureMulti", nearPressureForce);
         shader.SetFloat("predictionIteration", predictionIteration);
         shader.SetFloat("viscosityMulti", viscosity);
-        shader.SetVector("boxCentre", boxCentre);
-        shader.SetMatrix("worldMatrix", transform.localToWorldMatrix);
-        shader.SetMatrix("localMatrix", transform.worldToLocalMatrix);
         shader.SetVector("mousePos", mouseRefCentre);
         shader.SetFloat("mouseRadius", mouseRadius);
         shader.SetFloat("pushPullForce", pushPullForce);
         shader.SetBool("push", push);
         shader.SetBool("pull", pull);
         shader.SetFloat("gradientChoice", gradientType);
-        shader.SetFloat("densityMod", denMod);
-
         material.SetFloat("maxVel", particleMaxVelocity);
         material.SetFloat("gradientType", gradientType);
+    }
+
+    public void SetGpuBool(string gpuName, bool value)
+    {
+        shader.SetBool(gpuName, value);
+    }
+
+    public void SetGpuInt(string gpuName, int value)
+    {
+        shader.SetInt(gpuName, value);
+    }
+
+    public void SetGpuVector(string gpuName, Vector3 value)
+    {
+        shader.SetVector(gpuName, value);
     }
 
     private void SpawnParticlesInBox()
@@ -253,8 +259,8 @@ public class SPH : MonoBehaviour
             {
                 for (int z = 0; z < numToSpawn.z; z++)
                 {
-                    Vector3 spawnPos = spawnPoint + new Vector3(x * particleRadius * 2, y * particleRadius * 2, z * particleRadius * 2);
-                    spawnPos += UnityEngine.Random.onUnitSphere * particleRadius * spawnJitter;
+                    Vector3 spawnPos = spawnPoint + new Vector3(x  * 0.05f, y * 0.05f, z * 0.05f);
+                    spawnPos += UnityEngine.Random.onUnitSphere * spawnJitter;
                     Particle p = new Particle
                     {
                         position = spawnPos

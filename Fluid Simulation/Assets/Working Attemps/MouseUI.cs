@@ -2,12 +2,11 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
-
+using UnityEngine.Events;
 public class MouseUI : MonoBehaviour
 {
     [SerializeField] private SPH sim;
     [SerializeField] private MouseParticleMover mouseMover;
-
 
     public void UpdateSensitivity(Slider slider)
     {

@@ -6,10 +6,6 @@ using UnityEngine.UI;
 public class FluidConstantsUI : MonoBehaviour
 {
     [SerializeField] private SPH sim;
-    public void ChangeParticleMass(Slider sl)
-    {
-        sim.particleMass = sl.value;
-    }
     public void ChangeDensityTarget(Slider sl)
     {
         sim.densityTarget = sl.value;

@@ -23,14 +23,11 @@ RWStructuredBuffer<uint3> hashData;
 RWStructuredBuffer<uint> hashOffsetData;
 
 float gravity;
-float particleMass;
 float boundDamping;
 float radius;
 float pi;
 int particleLength;
 float timestep;
-float3 boxSize;
-float3 boxCentre;
 float densityTarget;
 float pressureMulti;
 float nearPressureMulti;
@@ -44,7 +41,6 @@ float pushPullForce;
 bool pull;
 bool push;
 int gradientChoice;
-float densityMod;
 
 static const int xThreads = 100;
 
@@ -391,7 +387,7 @@ void CalculateViscosity(uint id : SV_DispatchThreadID)
 [numthreads(xThreads, 1, 1)]
 void ApplyForces(uint id : SV_DispatchThreadID)
 {
-    _particles[id.x].external = float3(0, gravity / particleMass, 0) * timestep;
+    _particles[id.x].external = float3(0, gravity, 0) * timestep;
     
     _particles[id.x].velocity += _particles[id.x].external ;
     
