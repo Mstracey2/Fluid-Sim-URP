@@ -216,7 +216,7 @@ float GetNearSharedPressure(float denA, float denB)
 
 float2 DistanceIn3DSpace(float3 particlePos, float3 neighborPos)
 {
-    float3 particleDiff = (neighborPos - particlePos);
+    float3 particleDiff = (particlePos - neighborPos);
     float particleOffset = dot(particleDiff, particleDiff);
     return (particleOffset, sqrt(particleOffset));
 }
@@ -330,7 +330,7 @@ void CalculatePressure(uint id : SV_DispatchThreadID)
     }
     
     float3 acceleration = pressureForce / _particles[id.x].density[0];
-    _particles[id.x].pressure += acceleration * timestep;
+    _particles[id.x].pressure = acceleration * timestep;
 
 }
 

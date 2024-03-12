@@ -49,7 +49,7 @@ public class GPUSort
                 sortCompute.SetInt("groupHeight", groupHeight);
                 sortCompute.SetInt("stepIndex", stepIndex);
                 // Run the sorting step on the GPU
-                sortCompute.Dispatch(sortKernel, NextPowerOfTwo((indexBuffer.count) / 2), 1,1);
+                sortCompute.Dispatch(sortKernel, NextPowerOfTwo(((indexBuffer.count) / 2)/100), 1,1);
             }
         }
     }
@@ -59,7 +59,7 @@ public class GPUSort
     {
         Sort();
 
-        sortCompute.Dispatch(calculateOffsetsKernel, indexBuffer.count, 1,1);
+        sortCompute.Dispatch(calculateOffsetsKernel, indexBuffer.count/100, 1,1);
     }
 
 }

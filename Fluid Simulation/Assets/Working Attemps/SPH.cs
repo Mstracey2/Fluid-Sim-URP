@@ -95,7 +95,8 @@ public class SPH : MonoBehaviour
 
     private void Awake()
     {
-       
+        float timeStepper = Time.fixedDeltaTime / numOfParticleCalc * timestep;
+        SetComputeVariables(timeStepper);
         lineRend = GetComponent<LineRenderer>();
         lineRend.positionCount = 16;
         SpawnParticlesInBox();
@@ -133,8 +134,11 @@ public class SPH : MonoBehaviour
     {
         if (fixedTimestep)
         {
+            shader.SetMatrix("worldMatrix", transform.localToWorldMatrix);
+            shader.SetMatrix("localMatrix", transform.worldToLocalMatrix);
             for (int i = 0; i < numOfParticleCalc; i++)
             {
+
                 SimulateParticles(Time.fixedDeltaTime);
             }
 
@@ -144,7 +148,7 @@ public class SPH : MonoBehaviour
     private void Update()
     {
 
-        CalculateBoxVertices();
+        //CalculateBoxVertices();
         mouseRefCentre = mouseSphereRef.transform.position;
         boxSize = transform.localScale;
         boxCentre = transform.localPosition;
@@ -186,7 +190,7 @@ public class SPH : MonoBehaviour
     private void SimulateParticles(float frames)
     {
         float timeStepper = Time.fixedDeltaTime / numOfParticleCalc * timestep;
-        SetComputeVariables(timeStepper);
+        //SetComputeVariables(timeStepper);
 
         shader.Dispatch(externalKernel, totalParticles / thread, 1, 1);
 
