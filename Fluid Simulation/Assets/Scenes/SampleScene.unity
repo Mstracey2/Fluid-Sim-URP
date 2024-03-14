@@ -9543,7 +9543,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0b498a37571a63749b7f766dea868fdf, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  gravity: -10
+  gravity: -40
   boundDamping: 0.3
   showSpheres: 1
   fixedTimestep: 1
@@ -9589,16 +9589,16 @@ MonoBehaviour:
     m_NumColorKeys: 8
     m_NumAlphaKeys: 2
   resolution: 50
-  particleMaxVelocity: 20
+  particleMaxVelocity: 50
   gradientType: 1
   mouseSphereRef: {fileID: 754886510}
   pushPullForce: 0
   mouseRadius: 0
-  densityTarget: 0.5
-  pressureForce: 10
-  nearPressureForce: 1
+  densityTarget: 0.77
+  pressureForce: 37
+  nearPressureForce: 4
   predictionIteration: 120
-  viscosity: 0
+  viscosity: 2
   shader: {fileID: 7200000, guid: 1f25c4104f31085458f299190f2241e5, type: 3}
   sortingAlgorithm: {fileID: 7200000, guid: 44d0b9a487f5ce6489a6c2a0b5f6c2b1, type: 3}
   particles: []
