@@ -77,10 +77,6 @@ public class SPH : MonoBehaviour
     private int viscosityKernel;
     private int spatialHashKernel;
 
-
-
-    
-
     private void Awake()
     {
 
