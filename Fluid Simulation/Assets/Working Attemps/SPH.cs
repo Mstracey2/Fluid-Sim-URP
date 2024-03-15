@@ -24,28 +24,14 @@ public class SPH : MonoBehaviour
     [Header("Setup")]
     public float gravity;
     public float boundDamping = 0.2f;
-    public bool showSpheres = true;
+
     public bool fixedTimestep;
-    public Vector3Int numToSpawn = new Vector3Int(10, 10, 10);
-    public Vector3 boxSize = new Vector3(4, 10, 3);
-    public Vector3 boxCentre = new Vector3(4, 10, 3);
-    public Vector3 spawnCenter;
     public float particleRadius = 0.1f;
-    public float spawnJitter = 0.2f;
     public float timestep = -0.007f;
     public int numOfParticleCalc;
-    private int totalParticles { get { return numToSpawn.x * numToSpawn.y * numToSpawn.z; } }
 
-    [Header("Particle Rendering")]
-    public Mesh particleMesh;
-    public float particleRenderSize = 8f;
-    public Material material;
-    public Gradient colourGradient;
-    public int resolution;
-    public int particleMaxVelocity;
-    public int gradientType;
-    Color[] colourMap;
-    Texture2D texture;
+
+   
 
     [Header("Mouse")]
     public GameObject mouseSphereRef;
@@ -62,15 +48,22 @@ public class SPH : MonoBehaviour
     public float predictionIteration;
     public float viscosity;
 
-    [Header("Compute")]
+    [Header("Compute Shaders")]
     public ComputeShader shader;
     public ComputeShader sortingAlgorithm;
-    public Particle[] particles;
-    public uint3[] hashDataVect;
-    public uint[] offsetHashData;
+
+    [Header("SPH systems")]
+    public SPHSetup particleSetter;
+    public SPHRendering rendering;
+
+    // buffer Data
+    private Particle[] particles;
+    private uint3[] hashDataVect;
+    private uint[] offsetHashData;
+    private int totalParticles;
 
     private ComputeBuffer _argsBuffer;
-    public ComputeBuffer _particleBuffer;
+    private ComputeBuffer _particleBuffer;
     private ComputeBuffer _hashData;
     private ComputeBuffer _offsetHashData;
 
@@ -78,36 +71,25 @@ public class SPH : MonoBehaviour
 
     //Kernals
     private int externalKernel;
-    private int detectBoundsKernel;
     private int densityKernel;
     private int pressureKernel;
     private int forceKernel;
     private int viscosityKernel;
     private int spatialHashKernel;
 
-    LineRenderer lineRend;
-    public float lineRendMulti;
 
-    private static readonly int SizeProperty = Shader.PropertyToID("_size");
-    private static readonly int ParticelsBufferProperty = Shader.PropertyToID("_particlesBuffer");
+
+    
 
     private void Awake()
     {
-        float timeStepper = Time.fixedDeltaTime / numOfParticleCalc * timestep;
-        SetComputeVariables(timeStepper);
-        lineRend = GetComponent<LineRenderer>();
-        lineRend.positionCount = 16;
-        SpawnParticlesInBox();
-        uint[] args =
-        {
-            particleMesh.GetIndexCount(0),
-            (uint)totalParticles,
-            particleMesh.GetIndexStart(0),
-            particleMesh.GetBaseVertex(0),
-            0
-        };
-        _argsBuffer = new ComputeBuffer(1, args.Length * sizeof(uint), ComputeBufferType.IndirectArguments);
-        _argsBuffer.SetData(args);
+
+
+        particles = particleSetter.SpawnParticlesInBox();
+        totalParticles = particles.Length;
+
+        _argsBuffer = rendering.CreateMeshArgsBuffer(totalParticles);
+
         _particleBuffer = new ComputeBuffer(totalParticles, 80);
         _particleBuffer.SetData(particles);
 
@@ -145,50 +127,18 @@ public class SPH : MonoBehaviour
 
     private void Update()
     {
-        //CalculateBoxVertices();
-        CalculateBoxVertices();
         mouseRefCentre = mouseSphereRef.transform.position;
-        boxSize = transform.localScale;
-        boxCentre = transform.localPosition;
-        material.SetFloat(SizeProperty, particleRenderSize);
-        material.SetBuffer(ParticelsBufferProperty, _particleBuffer);
-        if (showSpheres)
-        {
-            Graphics.DrawMeshInstancedIndirect(particleMesh, 0, material, new Bounds(Vector3.zero, boxSize), _argsBuffer, castShadows: UnityEngine.Rendering.ShadowCastingMode.Off);
-        }
+
             
     }
-    public Transform transd;
-    private void CalculateBoxVertices()
-    {
-        var trans = transd;
-        var min = trans.localPosition - trans.localScale * 0.5f;
-        var max = trans.localPosition + trans.localScale * 0.5f;
-
-        lineRend.SetPosition(0,new Vector3(min.x, min.y, min.z));
-        lineRend.SetPosition(1, new Vector3(min.x, min.y, max.z));
-        lineRend.SetPosition(3, new Vector3(min.x, max.y, min.z));
-        lineRend.SetPosition(2,new Vector3(min.x, max.y, max.z));
-        lineRend.SetPosition(4, new Vector3(min.x, min.y, min.z));
-        lineRend.SetPosition(5, new Vector3(max.x, min.y, min.z));
-        lineRend.SetPosition(6, new Vector3(max.x, max.y, min.z));
-        lineRend.SetPosition(7, new Vector3(min.x, max.y, min.z));
-        lineRend.SetPosition(8, new Vector3(max.x, max.y, min.z));
-        lineRend.SetPosition(9, (new Vector3(max.x, max.y, max.z)));
-        lineRend.SetPosition(10,(new Vector3(min.x, max.y, max.z)));
-        lineRend.SetPosition(11, (new Vector3(max.x, max.y, max.z)));
-        lineRend.SetPosition(12, (new Vector3(max.x, min.y, max.z)));
-        lineRend.SetPosition(13, (new Vector3(min.x, min.y, max.z)));
-        lineRend.SetPosition(14, (new Vector3(max.x, min.y, max.z)));
-        lineRend.SetPosition(15, (new Vector3(max.x, min.y, min.z)));
-    }
+   
 
     int thread = 100;
 
     private void SimulateParticles(float frames)
     {
         float timeStepper = Time.fixedDeltaTime / numOfParticleCalc * timestep;
-        //SetComputeVariables(timeStepper);
+        SetComputeVariables(timeStepper);
 
         shader.Dispatch(externalKernel, totalParticles / thread, 1, 1);
 
@@ -200,7 +150,6 @@ public class SPH : MonoBehaviour
         shader.Dispatch(pressureKernel, totalParticles / thread, 1 , 1);
         shader.Dispatch(viscosityKernel, totalParticles / thread, 1 , 1);
         shader.Dispatch(forceKernel, totalParticles / thread, 1 , 1);
-        //shader.Dispatch(detectBoundsKernel, totalParticles / thread, 1, 1);
 
         //_particleBuffer.GetData(particles);
         //_hashData.GetData(hashDataVect);
@@ -209,8 +158,6 @@ public class SPH : MonoBehaviour
 
     private void SetComputeVariables(float time)
     {
-
-        ProduceColourGradientMap();
         shader.SetMatrix("worldMatrix", transform.localToWorldMatrix);
         shader.SetMatrix("localMatrix", transform.worldToLocalMatrix);
         shader.SetFloat("timestep", time);
@@ -249,28 +196,7 @@ public class SPH : MonoBehaviour
         shader.SetVector(gpuName, value);
     }
 
-    private void SpawnParticlesInBox()
-    {
-        Vector3 spawnPoint = spawnCenter;
-        List<Particle> _particles = new List<Particle>();
-        for (int x = 0; x < numToSpawn.x; x++)
-        {
-            for (int y = 0; y < numToSpawn.y; y++)
-            {
-                for (int z = 0; z < numToSpawn.z; z++)
-                {
-                    Vector3 spawnPos = spawnPoint + new Vector3(x  * 0.05f, y * 0.05f, z * 0.05f);
-                    spawnPos += UnityEngine.Random.onUnitSphere * spawnJitter;
-                    Particle p = new Particle
-                    {
-                        position = spawnPos
-                    };
-                    _particles.Add(p);
-                }
-            }
-        }
-        particles = _particles.ToArray();
-    }
+   
 
     private void FindKernelsAndSetBuffers()
     {
@@ -307,20 +233,7 @@ public class SPH : MonoBehaviour
          
     }
 
-    private void OnDrawGizmos()
-    {
-        Matrix4x4 matrix = Gizmos.matrix;
-        Gizmos.color = Color.blue;
-        Gizmos.matrix = transform.localToWorldMatrix;
-        Gizmos.DrawWireCube(Vector3.zero, Vector3.one);
-
-        if (!Application.isPlaying)
-        {
-            Gizmos.color = Color.cyan;
-            Gizmos.DrawWireSphere(spawnCenter, 0.1f);
-        }
-        Gizmos.matrix = matrix;
-    }
+    
 
     public void PushParticles(InputAction.CallbackContext context)
     {
@@ -345,24 +258,6 @@ public class SPH : MonoBehaviour
             pull = false;
         }
     }
-
-    private void ProduceColourGradientMap()
-    {
-        texture = new Texture2D(resolution, 1);
-        texture.wrapMode = TextureWrapMode.Clamp;
-        texture.filterMode = FilterMode.Bilinear;
-        colourMap = new Color[resolution];
-        for(int i = 0; i< colourMap.Length; i++)
-        {
-            float t = i / (colourMap.Length - 1f);
-            colourMap[i] = colourGradient.Evaluate(t);
-        }
-
-        texture.SetPixels(colourMap);
-        texture.Apply();
-        material.SetTexture("ColourMap", texture);
-    }
-
 
     void OnDestroy()
     {
