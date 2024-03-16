@@ -13,7 +13,7 @@ public class SPHRendering : MonoBehaviour
     public Gradient colourGradient;
     public int resolution;
     public int particleMaxVelocity;
-    public int gradientType;
+
     Color[] colourMap;
     Texture2D texture;
     public bool showSpheres = true;
@@ -36,8 +36,6 @@ public class SPHRendering : MonoBehaviour
     void Update()
     {
         CalculateBoxVertices();
-
-
         if (showSpheres)
         {
             Graphics.DrawMeshInstancedIndirect(particleMesh, 0, material, new Bounds(Vector3.zero, boxSize), argsRendRef, castShadows: UnityEngine.Rendering.ShadowCastingMode.Off);
@@ -72,7 +70,7 @@ public class SPHRendering : MonoBehaviour
     }
 
 
-    private void ProduceColourGradientMap()
+    public void ProduceColourGradientMap()
     {
         texture = new Texture2D(resolution, 1);
         texture.wrapMode = TextureWrapMode.Clamp;
@@ -107,10 +105,12 @@ public class SPHRendering : MonoBehaviour
     }
 
 
-    public void SetMaterialProperties(ComputeBuffer particleBuffer)
+    public void SetShaderProperties(ComputeBuffer particleBuffer, int gradientType)
     {
         material.SetFloat(SizeProperty, particleRenderSize);
         material.SetBuffer(ParticlesBufferProperty, particleBuffer);
+        material.SetFloat("maxVel", particleMaxVelocity);
+        material.SetFloat("gradientType", gradientType);
     }
 
 }

@@ -33,18 +33,4 @@ public class RenderingUI : MonoBehaviour
         //sim.colourGradient.SetKeys(colourKeys, alphaKeys);
         
     }
-
-    public void UpdateRenderSize(Slider sl)
-    {
-        //sim.particleRenderSize = sl.value;
-    }
-
-    public void UpdateResolution(Slider sl)
-    {
-        //sim.resolution = (int)sl.value;
-    }
-    public void UpdateVelocityMax(Slider sl)
-    {
-       // sim.particleMaxVelocity = (int)sl.value;
-    }
 }

@@ -31,8 +31,6 @@ public class SPH : MonoBehaviour
     public int numOfParticleCalc;
 
 
-   
-
     [Header("Mouse")]
     public GameObject mouseSphereRef;
     public float pushPullForce;
@@ -47,9 +45,10 @@ public class SPH : MonoBehaviour
     public float nearPressureForce;
     public float predictionIteration;
     public float viscosity;
+    public int gradientType;
 
     [Header("Compute Shaders")]
-    public ComputeShader shader;
+    public ComputeShader SPHComputeshader;
     public ComputeShader sortingAlgorithm;
 
     [Header("SPH systems")]
@@ -77,10 +76,20 @@ public class SPH : MonoBehaviour
     private int viscosityKernel;
     private int spatialHashKernel;
 
+
+    public enum GPUVariables
+    {
+        densityTarget,
+        pressureMulti,
+        nearPressureMulti,
+        viscosityMulti,
+        predictionIteration,
+    }
+
+
+
     private void Awake()
     {
-
-
         particles = particleSetter.SpawnParticlesInBox();
         totalParticles = particles.Length;
 
@@ -103,7 +112,7 @@ public class SPH : MonoBehaviour
         _offsetHashData.SetData(offsetHashData);
         
         FindKernelsAndSetBuffers();
-
+        SPHComputeshader.SetInt("particleLength", totalParticles);
     }
 
     private void FixedUpdate()
@@ -114,7 +123,6 @@ public class SPH : MonoBehaviour
             SetComputeVariables(timeStepper);
             for (int i = 0; i < numOfParticleCalc; i++)
             {
-
                 SimulateParticles(Time.fixedDeltaTime);
             }
 
@@ -123,9 +131,8 @@ public class SPH : MonoBehaviour
 
     private void Update()
     {
-        mouseRefCentre = mouseSphereRef.transform.position;
-
-            
+        rendering.SetShaderProperties(_particleBuffer, gradientType);
+        mouseRefCentre = mouseSphereRef.transform.position;   
     }
    
 
@@ -133,19 +140,14 @@ public class SPH : MonoBehaviour
 
     private void SimulateParticles(float frames)
     {
-        float timeStepper = Time.fixedDeltaTime / numOfParticleCalc * timestep;
-        SetComputeVariables(timeStepper);
-
-        shader.Dispatch(externalKernel, totalParticles / thread, 1, 1);
-
-        shader.Dispatch(spatialHashKernel, totalParticles / thread, 1, 1);
+        SPHComputeshader.Dispatch(externalKernel, totalParticles / thread, 1, 1);
+        SPHComputeshader.Dispatch(spatialHashKernel, totalParticles / thread, 1, 1);
         bufferSorter.SortAndCalculateOffsets();
 
-        
-        shader.Dispatch(densityKernel, totalParticles / thread, 1 , 1);
-        shader.Dispatch(pressureKernel, totalParticles / thread, 1 , 1);
-        shader.Dispatch(viscosityKernel, totalParticles / thread, 1 , 1);
-        shader.Dispatch(forceKernel, totalParticles / thread, 1 , 1);
+        SPHComputeshader.Dispatch(densityKernel, totalParticles / thread, 1 , 1);
+        SPHComputeshader.Dispatch(pressureKernel, totalParticles / thread, 1 , 1);
+        SPHComputeshader.Dispatch(viscosityKernel, totalParticles / thread, 1 , 1);
+        SPHComputeshader.Dispatch(forceKernel, totalParticles / thread, 1 , 1);
 
         //_particleBuffer.GetData(particles);
         //_hashData.GetData(hashDataVect);
@@ -154,74 +156,84 @@ public class SPH : MonoBehaviour
 
     private void SetComputeVariables(float time)
     {
-        shader.SetMatrix("worldMatrix", transform.localToWorldMatrix);
-        shader.SetMatrix("localMatrix", transform.worldToLocalMatrix);
-        shader.SetFloat("timestep", time);
-        shader.SetInt("particleLength", totalParticles);
-        shader.SetFloat("pi", Mathf.PI);
-        shader.SetFloat("gravity", gravity);
-        shader.SetFloat("radius", particleRadius);
-        shader.SetFloat("boundDamping", boundDamping);
-        shader.SetFloat("densityTarget", densityTarget);
-        shader.SetFloat("pressureMulti", pressureForce);
-        shader.SetFloat("nearPressureMulti", nearPressureForce);
-        shader.SetFloat("predictionIteration", predictionIteration);
-        shader.SetFloat("viscosityMulti", viscosity);
-        shader.SetVector("mousePos", mouseRefCentre);
-        shader.SetFloat("mouseRadius", mouseRadius);
-        shader.SetFloat("pushPullForce", pushPullForce);
-        shader.SetBool("push", push);
-        shader.SetBool("pull", pull);
-        shader.SetFloat("gradientChoice", gradientType);
-        material.SetFloat("maxVel", particleMaxVelocity);
-        material.SetFloat("gradientType", gradientType);
+        
+        SPHComputeshader.SetMatrix("worldMatrix", transform.localToWorldMatrix);
+        SPHComputeshader.SetMatrix("localMatrix", transform.worldToLocalMatrix);
+        SPHComputeshader.SetFloat("timestep", time);
+       
+        SPHComputeshader.SetFloat("pi", Mathf.PI);
+        SPHComputeshader.SetFloat("gravity", gravity);
+        SPHComputeshader.SetFloat("radius", particleRadius);
+        SPHComputeshader.SetFloat("boundDamping", boundDamping);
+        
+        SPHComputeshader.SetVector("mousePos", mouseRefCentre);
+        SPHComputeshader.SetFloat("mouseRadius", mouseRadius);
+        SPHComputeshader.SetFloat("pushPullForce", pushPullForce);
+        SPHComputeshader.SetBool("push", push);
+        SPHComputeshader.SetBool("pull", pull);
+        SPHComputeshader.SetFloat("gradientChoice", gradientType);
+
+        //SPHComputeshader.SetFloat("densityTarget", densityTarget);
+        //SPHComputeshader.SetFloat("pressureMulti", pressureForce);
+        //SPHComputeshader.SetFloat("nearPressureMulti", nearPressureForce);
+        //SPHComputeshader.SetFloat("predictionIteration", predictionIteration);
+        //SPHComputeshader.SetFloat("viscosityMulti", viscosity);
+       
+
+        rendering.ProduceColourGradientMap();
+
     }
 
-    public void SetGpuBool(string gpuName, bool value)
+    public void SetGpuBool(GPUVariables variable, bool value)
     {
-        shader.SetBool(gpuName, value);
+        SPHComputeshader.SetBool(nameof(variable), value);
     }
 
-    public void SetGpuInt(string gpuName, int value)
+    public void SetGpuInt(GPUVariables variable, int value)
     {
-        shader.SetInt(gpuName, value);
+        SPHComputeshader.SetInt(nameof(variable), value);
     }
 
-    public void SetGpuVector(string gpuName, Vector3 value)
+    public void SetGpuFloat(GPUVariables variable, float value)
     {
-        shader.SetVector(gpuName, value);
+        SPHComputeshader.SetFloat(nameof(variable), value);
+    }
+
+    public void SetGpuVector(GPUVariables variable, Vector3 value)
+    {
+        SPHComputeshader.SetVector(nameof(variable), value);
     }
 
    
 
     private void FindKernelsAndSetBuffers()
     {
-        externalKernel = shader.FindKernel("CalculateExternalForces");
-        densityKernel = shader.FindKernel("CalculateDensity");
-        pressureKernel = shader.FindKernel("CalculatePressure");
-        viscosityKernel = shader.FindKernel("CalculateViscosity");
-        forceKernel = shader.FindKernel("ApplyForces");
-        spatialHashKernel = shader.FindKernel("GetSpacialHash");
+        externalKernel = SPHComputeshader.FindKernel("CalculateExternalForces");
+        densityKernel = SPHComputeshader.FindKernel("CalculateDensity");
+        pressureKernel = SPHComputeshader.FindKernel("CalculatePressure");
+        viscosityKernel = SPHComputeshader.FindKernel("CalculateViscosity");
+        forceKernel = SPHComputeshader.FindKernel("ApplyForces");
+        spatialHashKernel = SPHComputeshader.FindKernel("GetSpacialHash");
        //detectBoundsKernel = shader.FindKernel("DetectBounds");
 
 
-        shader.SetBuffer(externalKernel, "_particles", _particleBuffer);
-        shader.SetBuffer(densityKernel, "_particles", _particleBuffer);
-        shader.SetBuffer(pressureKernel, "_particles", _particleBuffer);
-        shader.SetBuffer(viscosityKernel, "_particles", _particleBuffer);
-        shader.SetBuffer(forceKernel, "_particles", _particleBuffer);
-        shader.SetBuffer(spatialHashKernel, "_particles", _particleBuffer);
+        SPHComputeshader.SetBuffer(externalKernel, "_particles", _particleBuffer);
+        SPHComputeshader.SetBuffer(densityKernel, "_particles", _particleBuffer);
+        SPHComputeshader.SetBuffer(pressureKernel, "_particles", _particleBuffer);
+        SPHComputeshader.SetBuffer(viscosityKernel, "_particles", _particleBuffer);
+        SPHComputeshader.SetBuffer(forceKernel, "_particles", _particleBuffer);
+        SPHComputeshader.SetBuffer(spatialHashKernel, "_particles", _particleBuffer);
         //shader.SetBuffer(detectBoundsKernel, "_particles", _particleBuffer);
 
-        shader.SetBuffer(spatialHashKernel, "hashData", _hashData);
-        shader.SetBuffer(densityKernel, "hashData", _hashData);
-        shader.SetBuffer(pressureKernel, "hashData", _hashData);
-        shader.SetBuffer(viscosityKernel, "hashData", _hashData);
+        SPHComputeshader.SetBuffer(spatialHashKernel, "hashData", _hashData);
+        SPHComputeshader.SetBuffer(densityKernel, "hashData", _hashData);
+        SPHComputeshader.SetBuffer(pressureKernel, "hashData", _hashData);
+        SPHComputeshader.SetBuffer(viscosityKernel, "hashData", _hashData);
 
-        shader.SetBuffer(spatialHashKernel, "hashOffsetData", _offsetHashData);
-        shader.SetBuffer(densityKernel, "hashOffsetData", _offsetHashData);
-        shader.SetBuffer(pressureKernel, "hashOffsetData", _offsetHashData);
-        shader.SetBuffer(viscosityKernel, "hashOffsetData", _offsetHashData);
+        SPHComputeshader.SetBuffer(spatialHashKernel, "hashOffsetData", _offsetHashData);
+        SPHComputeshader.SetBuffer(densityKernel, "hashOffsetData", _offsetHashData);
+        SPHComputeshader.SetBuffer(pressureKernel, "hashOffsetData", _offsetHashData);
+        SPHComputeshader.SetBuffer(viscosityKernel, "hashOffsetData", _offsetHashData);
 
 
         bufferSorter = new GPUSort(sortingAlgorithm);

@@ -5,17 +5,18 @@ using UnityEngine;
 public class SPHSetup : MonoBehaviour
 {
     public int particlesPerAxis;
-    private Vector3Int numToSpawn = new Vector3Int(10, 10, 10);
+    private Vector3Int numToSpawn;
     public Vector3 spawnCenter;
     public float spawnJitter = 0.2f;
 
     private void Awake()
     {
-        numToSpawn = new Vector3Int(particlesPerAxis, particlesPerAxis, particlesPerAxis);
+       
     }
 
     public Particle[] SpawnParticlesInBox()
     {
+        numToSpawn = new Vector3Int(particlesPerAxis, particlesPerAxis, particlesPerAxis);
         Vector3 spawnPoint = spawnCenter;
         List<Particle> newParticles = new List<Particle>();
         for (int x = 0; x < numToSpawn.x; x++)
