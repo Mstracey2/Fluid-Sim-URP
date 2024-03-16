@@ -7128,7 +7128,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   cam: {fileID: 330585545}
-  farBounds: 48
+  farBounds: 65
   nearBounds: 24
 --- !u!23 &754886516
 MeshRenderer:
@@ -13148,7 +13148,7 @@ MonoBehaviour:
   m_MinValue: 0
   m_MaxValue: 15
   m_WholeNumbers: 0
-  m_Value: 0.48
+  m_Value: 0
   m_OnValueChanged:
     m_PersistentCalls:
       m_Calls:
