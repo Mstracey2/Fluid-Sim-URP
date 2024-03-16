@@ -4,6 +4,7 @@ using UnityEngine;
 using System.Runtime.InteropServices;
 using UnityEngine.InputSystem;
 using Unity.Mathematics;
+using System;
 
 [System.Serializable]
 [StructLayout(LayoutKind.Sequential, Size = 76)]
@@ -22,30 +23,15 @@ public struct Particle
 public class SPH : MonoBehaviour
 {
     [Header("Setup")]
-    public float gravity;
-    public float boundDamping = 0.2f;
-
     public bool fixedTimestep;
-    public float particleRadius = 0.1f;
-    public float timestep = -0.007f;
-    public int numOfParticleCalc;
-
+    private float particleRadius = 0.7f;
+    private int numOfParticleCalc = 3;
+    private float timestep;
 
     [Header("Mouse")]
     public GameObject mouseSphereRef;
-    public float pushPullForce;
     private Vector3 mouseRefCentre;
-    public float mouseRadius;
-    private bool pull;
-    private bool push;
 
-    [Header("Fluid Constants")]
-    public float densityTarget;
-    public float pressureForce;
-    public float nearPressureForce;
-    public float predictionIteration;
-    public float viscosity;
-    public int gradientType;
 
     [Header("Compute Shaders")]
     public ComputeShader SPHComputeshader;
@@ -84,12 +70,23 @@ public class SPH : MonoBehaviour
         nearPressureMulti,
         viscosityMulti,
         predictionIteration,
+        mousePos,
+        mouseRadius,
+        pushPullForce,
+        gradientChoice,
+        maxVel,
+        _size,
+        gravity,
+        timestep,
+        boundDamping,
+        NA,
     }
 
 
 
     private void Awake()
     {
+        SetGpuTimeStep(0.9f);
         particles = particleSetter.SpawnParticlesInBox();
         totalParticles = particles.Length;
 
@@ -112,18 +109,23 @@ public class SPH : MonoBehaviour
         _offsetHashData.SetData(offsetHashData);
         
         FindKernelsAndSetBuffers();
+
+        //constant GPU values.
+        SPHComputeshader.SetFloat("radius", particleRadius);
         SPHComputeshader.SetInt("particleLength", totalParticles);
+        SPHComputeshader.SetFloat("pi", Mathf.PI);
     }
 
     private void FixedUpdate()
     {
         if (fixedTimestep)
         {
-            float timeStepper = Time.fixedDeltaTime / numOfParticleCalc * timestep;
-            SetComputeVariables(timeStepper);
+            float timeStepper = Time.fixedDeltaTime / timestep;
+            SPHComputeshader.SetFloat("timestep", timeStepper);
+
             for (int i = 0; i < numOfParticleCalc; i++)
             {
-                SimulateParticles(Time.fixedDeltaTime);
+                SimulateParticles();
             }
 
         }
@@ -131,14 +133,18 @@ public class SPH : MonoBehaviour
 
     private void Update()
     {
-        rendering.SetShaderProperties(_particleBuffer, gradientType);
-        mouseRefCentre = mouseSphereRef.transform.position;   
+        
+        rendering.SetShaderProperties(_particleBuffer);
+        
+        //setting mouse position
+        mouseRefCentre = mouseSphereRef.transform.position;
+        SPHComputeshader.SetVector("mousePos", mouseRefCentre);
     }
    
 
     int thread = 100;
 
-    private void SimulateParticles(float frames)
+    private void SimulateParticles()
     {
         SPHComputeshader.Dispatch(externalKernel, totalParticles / thread, 1, 1);
         SPHComputeshader.Dispatch(spatialHashKernel, totalParticles / thread, 1, 1);
@@ -154,57 +160,21 @@ public class SPH : MonoBehaviour
         //_offsetHashData.GetData(offsetHashData);
     }
 
-    private void SetComputeVariables(float time)
+    public void SetGpuFloat(string variable, float value)
     {
-        
+        SPHComputeshader.SetFloat(variable, value);
+    }
+
+    public void SetGpuTimeStep(float value)
+    {
+        timestep = numOfParticleCalc * value;
+    }
+
+    public void SetGpuMatrix()
+    {
         SPHComputeshader.SetMatrix("worldMatrix", transform.localToWorldMatrix);
         SPHComputeshader.SetMatrix("localMatrix", transform.worldToLocalMatrix);
-        SPHComputeshader.SetFloat("timestep", time);
-       
-        SPHComputeshader.SetFloat("pi", Mathf.PI);
-        SPHComputeshader.SetFloat("gravity", gravity);
-        SPHComputeshader.SetFloat("radius", particleRadius);
-        SPHComputeshader.SetFloat("boundDamping", boundDamping);
-        
-        SPHComputeshader.SetVector("mousePos", mouseRefCentre);
-        SPHComputeshader.SetFloat("mouseRadius", mouseRadius);
-        SPHComputeshader.SetFloat("pushPullForce", pushPullForce);
-        SPHComputeshader.SetBool("push", push);
-        SPHComputeshader.SetBool("pull", pull);
-        SPHComputeshader.SetFloat("gradientChoice", gradientType);
-
-        //SPHComputeshader.SetFloat("densityTarget", densityTarget);
-        //SPHComputeshader.SetFloat("pressureMulti", pressureForce);
-        //SPHComputeshader.SetFloat("nearPressureMulti", nearPressureForce);
-        //SPHComputeshader.SetFloat("predictionIteration", predictionIteration);
-        //SPHComputeshader.SetFloat("viscosityMulti", viscosity);
-       
-
-        rendering.ProduceColourGradientMap();
-
     }
-
-    public void SetGpuBool(GPUVariables variable, bool value)
-    {
-        SPHComputeshader.SetBool(nameof(variable), value);
-    }
-
-    public void SetGpuInt(GPUVariables variable, int value)
-    {
-        SPHComputeshader.SetInt(nameof(variable), value);
-    }
-
-    public void SetGpuFloat(GPUVariables variable, float value)
-    {
-        SPHComputeshader.SetFloat(nameof(variable), value);
-    }
-
-    public void SetGpuVector(GPUVariables variable, Vector3 value)
-    {
-        SPHComputeshader.SetVector(nameof(variable), value);
-    }
-
-   
 
     private void FindKernelsAndSetBuffers()
     {
@@ -247,11 +217,11 @@ public class SPH : MonoBehaviour
     {
         if (context.performed)
         {
-            push = true;
+            SPHComputeshader.SetBool("push", true);
         }
         else if(context.canceled)
         {
-            push = false;
+            SPHComputeshader.SetBool("push", false);
         }
     }
 
@@ -259,11 +229,11 @@ public class SPH : MonoBehaviour
     {
         if (context.performed)
         {
-            pull = true;
+            SPHComputeshader.SetBool("pull", true);
         }
         else if (context.canceled)
         {
-            pull = false;
+            SPHComputeshader.SetBool("pull", false);
         }
     }
 

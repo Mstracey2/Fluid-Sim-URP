@@ -40,7 +40,6 @@ float mouseRadius;
 float pushPullForce;
 bool pull;
 bool push;
-int gradientChoice;
 
 static const int xThreads = 100;
 

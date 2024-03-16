@@ -10,7 +10,7 @@ public class SPHRendering : MonoBehaviour
     public Mesh particleMesh;
     public float particleRenderSize = 8f;
     public Material material;
-    public Gradient colourGradient;
+    //public Gradient colourGradient;
     public int resolution;
     public int particleMaxVelocity;
 
@@ -19,7 +19,6 @@ public class SPHRendering : MonoBehaviour
     public bool showSpheres = true;
     private Vector3 boxSize = new Vector3(4, 10, 3);
 
-    private static readonly int SizeProperty = Shader.PropertyToID("_size");
     private static readonly int ParticlesBufferProperty = Shader.PropertyToID("_particlesBuffer");
 
     private ComputeBuffer argsRendRef;
@@ -42,7 +41,6 @@ public class SPHRendering : MonoBehaviour
         }
 
     }
-
 
     public Transform transRef;
     private void CalculateBoxVertices()
@@ -70,7 +68,7 @@ public class SPHRendering : MonoBehaviour
     }
 
 
-    public void ProduceColourGradientMap()
+    public void ProduceColourGradientMap(Gradient gradient)
     {
         texture = new Texture2D(resolution, 1);
         texture.wrapMode = TextureWrapMode.Clamp;
@@ -79,7 +77,7 @@ public class SPHRendering : MonoBehaviour
         for (int i = 0; i < colourMap.Length; i++)
         {
             float t = i / (colourMap.Length - 1f);
-            colourMap[i] = colourGradient.Evaluate(t);
+            colourMap[i] = gradient.Evaluate(t);
         }
 
         texture.SetPixels(colourMap);
@@ -104,13 +102,13 @@ public class SPHRendering : MonoBehaviour
         return argsBuffer;
     }
 
-
-    public void SetShaderProperties(ComputeBuffer particleBuffer, int gradientType)
+    public void SetShaderFloat(string variable, float value)
     {
-        material.SetFloat(SizeProperty, particleRenderSize);
+        material.SetFloat(variable, value);
+    }
+    public void SetShaderProperties(ComputeBuffer particleBuffer)
+    {
         material.SetBuffer(ParticlesBufferProperty, particleBuffer);
-        material.SetFloat("maxVel", particleMaxVelocity);
-        material.SetFloat("gradientType", gradientType);
     }
 
 }

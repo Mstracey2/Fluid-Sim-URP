@@ -13,13 +13,18 @@ public class ColourMaker : MonoBehaviour
     private float gCol;
     private float bCol;
 
+    public bool alreadyInstanced;
+
     private void Start()
     {
         rCol = img.color.r;
         gCol = img.color.g;
         bCol = img.color.b;
         rendUI = GameObject.Find("UISettings").GetComponent<RenderingUI>();
-        rendUI.uiGradientColours.Add(this);
+        if (!alreadyInstanced)
+        {
+            rendUI.uiGradientColours.Add(this);
+        }
         UpdateColour();
     }
 

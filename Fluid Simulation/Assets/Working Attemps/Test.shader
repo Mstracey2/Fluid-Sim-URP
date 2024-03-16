@@ -49,7 +49,7 @@ Shader "Unlit/Test"
 
             Texture2D<float4> ColourMap;
             SamplerState linear_clamp_sampler;
-            float gradientType;
+            float gradientChoice;
             struct VertexInput
             {
                 float4 position : POSITION;
@@ -82,15 +82,15 @@ Shader "Unlit/Test"
                     float3 gradientValue;
 
                     //Changing colour depending on the speed
-                    if (gradientType == 1) 
+                    if (gradientChoice == 1) 
                     {
                         gradientValue = _particlesBuffer[instanceID].velocity;
                     }
-                    else if (gradientType == 2)
+                    else if (gradientChoice == 2)
                     {
                         gradientValue = _particlesBuffer[instanceID].pressure;
                     }
-                    else if (gradientType == 3)
+                    else if (gradientChoice == 3)
                     {
                         gradientValue = _particlesBuffer[instanceID].position;
                     }
