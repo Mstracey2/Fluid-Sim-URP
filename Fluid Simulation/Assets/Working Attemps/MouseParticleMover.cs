@@ -6,11 +6,16 @@ using UnityEngine.InputSystem;
 public class MouseParticleMover : MonoBehaviour
 {
     [SerializeField] private Camera cam;
-    [SerializeField] private SPH sim;
     GameObject refPoint;
-    public float sensitivity;
+    
     public float farBounds;
     public float nearBounds;
+
+    private float sensitivity;
+    private float radius;
+
+    public float Radius { set { radius = value; } }
+    public float Sensitivity { set { sensitivity = value; } }
 
     float scrollVal;
     float offset;
@@ -29,7 +34,7 @@ public class MouseParticleMover : MonoBehaviour
         offset += scrollVal * sensitivity;
         CheckBounds(originalOffset);
         refPoint.transform.position = cam.ScreenToWorldPoint(new Vector3(Input.mousePosition.x, Input.mousePosition.y, cam.transform.position.z + offset));
-        transform.localScale = new Vector3(sim.mouseRadius, sim.mouseRadius, sim.mouseRadius);
+        transform.localScale = new Vector3(radius, radius, radius);
     }
 
     public void Scroll(InputAction.CallbackContext context)

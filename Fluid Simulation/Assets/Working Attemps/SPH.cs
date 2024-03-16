@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using UnityEngine;
 using System.Runtime.InteropServices;
 using UnityEngine.InputSystem;
+using Unity.Mathematics;
+using System;
 
 [System.Serializable]
-[StructLayout(LayoutKind.Sequential, Size = 68)]
+[StructLayout(LayoutKind.Sequential, Size = 76)]
 public struct Particle
 {
     public Vector3 pressure;
@@ -14,255 +16,212 @@ public struct Particle
     public Vector3 velocity;
     public Vector3 position;
     public Vector3 positionPrediction;
+    public uint3 hashData;
 }
 
 
 public class SPH : MonoBehaviour
 {
     [Header("Setup")]
-    public float gravity;
-    public float boundDamping = 0.2f;
-    public bool showSpheres = true;
     public bool fixedTimestep;
-    public Vector3Int numToSpawn = new Vector3Int(10, 10, 10);
-    public Vector3 boxSize = new Vector3(4, 10, 3);
-    public Vector3 boxCentre = new Vector3(4, 10, 3);
-    public Vector3 spawnCenter;
-    public float particleRadius = 0.1f;
-    public float spawnJitter = 0.2f;
-    public float timestep = -0.007f;
-    public int numOfParticleCalc;
-    private int totalParticles { get { return numToSpawn.x * numToSpawn.y * numToSpawn.z; } }
-
-    [Header("Particle Rendering")]
-    public Mesh particleMesh;
-    public float particleRenderSize = 8f;
-    public Material material;
-    public Gradient colourGradient;
-    public int resolution;
-    public int particleMaxVelocity;
-    public int gradientType;
-    Color[] colourMap;
-    Texture2D texture;
+    private float particleRadius = 0.7f;
+    private int numOfParticleCalc = 3;
+    private float timestep;
 
     [Header("Mouse")]
     public GameObject mouseSphereRef;
-    public float pushPullForce;
     private Vector3 mouseRefCentre;
-    public float mouseRadius;
-    private bool pull;
-    private bool push;
 
-    [Header("Fluid Constants")]
-    public float particleMass = 1f;
-    public float densityTarget;
-    public float pressureForce;
-    public float nearPressureForce;
-    public float predictionIteration;
-    public float viscosity;
 
-    [Header("Compute")]
-    public ComputeShader shader;
-    public Particle[] particles;
+    [Header("Compute Shaders")]
+    public ComputeShader SPHComputeshader;
+    public ComputeShader sortingAlgorithm;
+
+    [Header("SPH systems")]
+    public SPHSetup particleSetter;
+    public SPHRendering rendering;
+
+    // buffer Data
+    private Particle[] particles;
+    private uint3[] hashDataVect;
+    private uint[] offsetHashData;
+    private int totalParticles;
 
     private ComputeBuffer _argsBuffer;
     private ComputeBuffer _particleBuffer;
+    private ComputeBuffer _hashData;
+    private ComputeBuffer _offsetHashData;
+
+    private GPUSort bufferSorter;
 
     //Kernals
     private int externalKernel;
-    private int detectBoundsKernel;
     private int densityKernel;
     private int pressureKernel;
     private int forceKernel;
     private int viscosityKernel;
+    private int spatialHashKernel;
 
-    LineRenderer lineRend;
-    public float lineRendMulti;
 
-    private static readonly int SizeProperty = Shader.PropertyToID("_size");
-    private static readonly int ParticelsBufferProperty = Shader.PropertyToID("_particlesBuffer");
+    public enum GPUVariables
+    {
+        densityTarget,
+        pressureMulti,
+        nearPressureMulti,
+        viscosityMulti,
+        predictionIteration,
+        mousePos,
+        mouseRadius,
+        pushPullForce,
+        gradientChoice,
+        maxVel,
+        _size,
+        gravity,
+        timestep,
+        boundDamping,
+        NA,
+    }
+
+
 
     private void Awake()
     {
-        
-        lineRend = GetComponent<LineRenderer>();
-        lineRend.positionCount = 16;
-        SpawnParticlesInBox();
-        uint[] args =
-        {
-            particleMesh.GetIndexCount(0),
-            (uint)totalParticles,
-            particleMesh.GetIndexStart(0),
-            particleMesh.GetBaseVertex(0),
-            0
-        };
-        _argsBuffer = new ComputeBuffer(1, args.Length * sizeof(uint), ComputeBufferType.IndirectArguments);
-        _argsBuffer.SetData(args);
-        _particleBuffer = new ComputeBuffer(totalParticles, 68);
+        SetGpuTimeStep(0.9f);
+        particles = particleSetter.SpawnParticlesInBox();
+        totalParticles = particles.Length;
+
+        _argsBuffer = rendering.CreateMeshArgsBuffer(totalParticles);
+
+        _particleBuffer = new ComputeBuffer(totalParticles, 80);
         _particleBuffer.SetData(particles);
+
+        hashDataVect = new uint3[totalParticles];
+        offsetHashData = new uint[totalParticles];
+
+        for(int i = 0;  i < offsetHashData.Length; i++)
+        {
+            offsetHashData[i] = (uint)totalParticles;
+        }
+
+        _hashData = new ComputeBuffer(totalParticles, 12);
+        _hashData.SetData(hashDataVect);
+        _offsetHashData = new ComputeBuffer(totalParticles, 4);
+        _offsetHashData.SetData(offsetHashData);
+        
         FindKernelsAndSetBuffers();
+
+        //constant GPU values.
+        SPHComputeshader.SetFloat("radius", particleRadius);
+        SPHComputeshader.SetInt("particleLength", totalParticles);
+        SPHComputeshader.SetFloat("pi", Mathf.PI);
     }
 
     private void FixedUpdate()
     {
         if (fixedTimestep)
         {
-            SimulateParticles(Time.fixedDeltaTime);
+            float timeStepper = Time.fixedDeltaTime / timestep;
+            SPHComputeshader.SetFloat("timestep", timeStepper);
+
+            for (int i = 0; i < numOfParticleCalc; i++)
+            {
+                SimulateParticles();
+            }
+
         }
     }
 
     private void Update()
     {
-        CalculateBoxVertices();
+        
+        rendering.SetShaderProperties(_particleBuffer);
+        
+        //setting mouse position
         mouseRefCentre = mouseSphereRef.transform.position;
-        boxSize = transform.localScale;
-        boxCentre = transform.localPosition;
-        material.SetFloat(SizeProperty, particleRenderSize);
-        material.SetBuffer(ParticelsBufferProperty, _particleBuffer);
-        if (showSpheres)
-        {
-            Graphics.DrawMeshInstancedIndirect(particleMesh, 0, material, new Bounds(Vector3.zero, boxSize), _argsBuffer, castShadows: UnityEngine.Rendering.ShadowCastingMode.Off);
-        }
-            
+        SPHComputeshader.SetVector("mousePos", mouseRefCentre);
     }
-    public Transform transd;
-    private void CalculateBoxVertices()
-    {
-        var trans = transd;
-        var min = trans.localPosition - trans.localScale * 0.5f;
-        var max = trans.localPosition + trans.localScale * 0.5f;
+   
 
-        lineRend.SetPosition(0,new Vector3(min.x, min.y, min.z));
-        lineRend.SetPosition(1, new Vector3(min.x, min.y, max.z));
-        lineRend.SetPosition(3, new Vector3(min.x, max.y, min.z));
-        lineRend.SetPosition(2,new Vector3(min.x, max.y, max.z));
-        lineRend.SetPosition(4, new Vector3(min.x, min.y, min.z));
-        lineRend.SetPosition(5,new Vector3(max.x, min.y, min.z));
-        lineRend.SetPosition(6, new Vector3(max.x, max.y, min.z));
-        lineRend.SetPosition(7, new Vector3(min.x, max.y, min.z));
-        lineRend.SetPosition(8, new Vector3(max.x, max.y, min.z));
-        lineRend.SetPosition(9, (new Vector3(max.x, max.y, max.z)));
-        lineRend.SetPosition(10,(new Vector3(min.x, max.y, max.z)));
-        lineRend.SetPosition(11, (new Vector3(max.x, max.y, max.z)));
-        lineRend.SetPosition(12, (new Vector3(max.x, min.y, max.z)));
-        lineRend.SetPosition(13, (new Vector3(min.x, min.y, max.z)));
-        lineRend.SetPosition(14, (new Vector3(max.x, min.y, max.z)));
-        lineRend.SetPosition(15, (new Vector3(max.x, min.y, min.z)));
-    }
-    private void SimulateParticles(float frames)
+    int thread = 100;
+
+    private void SimulateParticles()
     {
-        float timeStepper = frames / numOfParticleCalc * timestep;
-        for(int i = 0; i < numOfParticleCalc; i++)
-        {
-            SetComputeVariables(timeStepper);
-            shader.Dispatch(detectBoundsKernel, totalParticles / 100, 1, 1);
-            shader.Dispatch(externalKernel, totalParticles / 100, 1, 1);
-            shader.Dispatch(densityKernel, totalParticles / 100, 1, 1);
-            shader.Dispatch(pressureKernel, totalParticles / 100, 1, 1);
-            shader.Dispatch(viscosityKernel, totalParticles / 100, 1, 1);
-            shader.Dispatch(forceKernel, totalParticles / 100, 1, 1);
-        }
+        SPHComputeshader.Dispatch(externalKernel, totalParticles / thread, 1, 1);
+        SPHComputeshader.Dispatch(spatialHashKernel, totalParticles / thread, 1, 1);
+        bufferSorter.SortAndCalculateOffsets();
+
+        SPHComputeshader.Dispatch(densityKernel, totalParticles / thread, 1 , 1);
+        SPHComputeshader.Dispatch(pressureKernel, totalParticles / thread, 1 , 1);
+        SPHComputeshader.Dispatch(viscosityKernel, totalParticles / thread, 1 , 1);
+        SPHComputeshader.Dispatch(forceKernel, totalParticles / thread, 1 , 1);
 
         //_particleBuffer.GetData(particles);
-
-        produceColourGradientMap();
+        //_hashData.GetData(hashDataVect);
+        //_offsetHashData.GetData(offsetHashData);
     }
 
-    private void SetComputeVariables(float time)
+    public void SetGpuFloat(string variable, float value)
     {
-        shader.SetVector("boxSize", boxSize);
-        shader.SetFloat("timestep", time);
-        shader.SetInt("particleLength", totalParticles);
-        shader.SetFloat("particleMass", particleMass);
-        shader.SetFloat("pi", Mathf.PI);
-        shader.SetVector("boxSize", boxSize);
-        shader.SetFloat("gravity", gravity);
-        shader.SetFloat("radius", particleRadius);
-        shader.SetFloat("boundDamping", boundDamping);
-        shader.SetFloat("densityTarget", densityTarget);
-        shader.SetFloat("pressureMulti", pressureForce);
-        shader.SetFloat("nearPressureMulti", nearPressureForce);
-        shader.SetFloat("predictionIteration", predictionIteration);
-        shader.SetFloat("viscosityMulti", viscosity);
-        shader.SetVector("boxCentre", boxCentre);
-        shader.SetMatrix("worldMatrix", transform.localToWorldMatrix);
-        shader.SetMatrix("localMatrix", transform.worldToLocalMatrix);
-        shader.SetVector("mousePos", mouseRefCentre);
-        shader.SetFloat("mouseRadius", mouseRadius);
-        shader.SetFloat("pushPullForce", pushPullForce);
-        shader.SetBool("push", push);
-        shader.SetBool("pull", pull);
-        shader.SetFloat("gradientChoice", gradientType);
-
-        material.SetFloat("maxVel", particleMaxVelocity);
-        material.SetFloat("gradientType", gradientType);
+        SPHComputeshader.SetFloat(variable, value);
     }
 
-    private void SpawnParticlesInBox()
+    public void SetGpuTimeStep(float value)
     {
-        Vector3 spawnPoint = spawnCenter;
-        List<Particle> _particles = new List<Particle>();
-        for (int x = 0; x < numToSpawn.x; x++)
-        {
-            for (int y = 0; y < numToSpawn.y; y++)
-            {
-                for (int z = 0; z < numToSpawn.z; z++)
-                {
-                    Vector3 spawnPos = spawnPoint + new Vector3(x * particleRadius * 2, y * particleRadius * 2, z * particleRadius * 2);
-                    spawnPos += Random.onUnitSphere * particleRadius * spawnJitter;
-                    Particle p = new Particle
-                    {
-                        position = spawnPos
-                    };
-                    _particles.Add(p);
-                }
-            }
-        }
-        particles = _particles.ToArray();
+        timestep = numOfParticleCalc * value;
+    }
+
+    public void SetGpuMatrix()
+    {
+        SPHComputeshader.SetMatrix("worldMatrix", transform.localToWorldMatrix);
+        SPHComputeshader.SetMatrix("localMatrix", transform.worldToLocalMatrix);
     }
 
     private void FindKernelsAndSetBuffers()
     {
-        externalKernel = shader.FindKernel("CalculateExternalForces");
-        detectBoundsKernel = shader.FindKernel("DetectBounds");
-        densityKernel = shader.FindKernel("CalculateDensity");
-        pressureKernel = shader.FindKernel("CalculatePressure");
-        viscosityKernel = shader.FindKernel("CalculateViscosity");
-        forceKernel = shader.FindKernel("ApplyForces");
+        externalKernel = SPHComputeshader.FindKernel("CalculateExternalForces");
+        densityKernel = SPHComputeshader.FindKernel("CalculateDensity");
+        pressureKernel = SPHComputeshader.FindKernel("CalculatePressure");
+        viscosityKernel = SPHComputeshader.FindKernel("CalculateViscosity");
+        forceKernel = SPHComputeshader.FindKernel("ApplyForces");
+        spatialHashKernel = SPHComputeshader.FindKernel("GetSpacialHash");
+       //detectBoundsKernel = shader.FindKernel("DetectBounds");
 
-        shader.SetBuffer(externalKernel, "_particles", _particleBuffer);
-        shader.SetBuffer(detectBoundsKernel, "_particles", _particleBuffer);
-        shader.SetBuffer(densityKernel, "_particles", _particleBuffer);
-        shader.SetBuffer(pressureKernel, "_particles", _particleBuffer);
-        shader.SetBuffer(viscosityKernel, "_particles", _particleBuffer);
-        shader.SetBuffer(forceKernel, "_particles", _particleBuffer);
 
+        SPHComputeshader.SetBuffer(externalKernel, "_particles", _particleBuffer);
+        SPHComputeshader.SetBuffer(densityKernel, "_particles", _particleBuffer);
+        SPHComputeshader.SetBuffer(pressureKernel, "_particles", _particleBuffer);
+        SPHComputeshader.SetBuffer(viscosityKernel, "_particles", _particleBuffer);
+        SPHComputeshader.SetBuffer(forceKernel, "_particles", _particleBuffer);
+        SPHComputeshader.SetBuffer(spatialHashKernel, "_particles", _particleBuffer);
+        //shader.SetBuffer(detectBoundsKernel, "_particles", _particleBuffer);
+
+        SPHComputeshader.SetBuffer(spatialHashKernel, "hashData", _hashData);
+        SPHComputeshader.SetBuffer(densityKernel, "hashData", _hashData);
+        SPHComputeshader.SetBuffer(pressureKernel, "hashData", _hashData);
+        SPHComputeshader.SetBuffer(viscosityKernel, "hashData", _hashData);
+
+        SPHComputeshader.SetBuffer(spatialHashKernel, "hashOffsetData", _offsetHashData);
+        SPHComputeshader.SetBuffer(densityKernel, "hashOffsetData", _offsetHashData);
+        SPHComputeshader.SetBuffer(pressureKernel, "hashOffsetData", _offsetHashData);
+        SPHComputeshader.SetBuffer(viscosityKernel, "hashOffsetData", _offsetHashData);
+
+
+        bufferSorter = new GPUSort(sortingAlgorithm);
+        bufferSorter.SetBuffers(_hashData, _offsetHashData);
+         
     }
 
-    private void OnDrawGizmos()
-    {
-        Matrix4x4 matrix = Gizmos.matrix;
-        Gizmos.color = Color.blue;
-        Gizmos.matrix = transform.localToWorldMatrix;
-        Gizmos.DrawWireCube(Vector3.zero, Vector3.one);
-
-        if (!Application.isPlaying)
-        {
-            Gizmos.color = Color.cyan;
-            Gizmos.DrawWireSphere(spawnCenter, 0.1f);
-        }
-        Gizmos.matrix = matrix;
-    }
+    
 
     public void PushParticles(InputAction.CallbackContext context)
     {
         if (context.performed)
         {
-            push = true;
+            SPHComputeshader.SetBool("push", true);
         }
         else if(context.canceled)
         {
-            push = false;
+            SPHComputeshader.SetBool("push", false);
         }
     }
 
@@ -270,28 +229,19 @@ public class SPH : MonoBehaviour
     {
         if (context.performed)
         {
-            pull = true;
+            SPHComputeshader.SetBool("pull", true);
         }
         else if (context.canceled)
         {
-            pull = false;
+            SPHComputeshader.SetBool("pull", false);
         }
     }
 
-    private void produceColourGradientMap()
+    void OnDestroy()
     {
-        texture = new Texture2D(resolution, 1);
-        texture.wrapMode = TextureWrapMode.Clamp;
-        texture.filterMode = FilterMode.Bilinear;
-        colourMap = new Color[resolution];
-        for(int i = 0; i< colourMap.Length; i++)
-        {
-            float t = i / (colourMap.Length - 1f);
-            colourMap[i] = colourGradient.Evaluate(t);
-        }
-
-        texture.SetPixels(colourMap);
-        texture.Apply();
-        material.SetTexture("ColourMap", texture);
+        _argsBuffer.Release();
+        _particleBuffer.Release();
+        _offsetHashData.Release();
+        _hashData.Release();
     }
 }

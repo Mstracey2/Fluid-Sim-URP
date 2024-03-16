@@ -5,18 +5,19 @@ using UnityEngine.UI;
 
 public class RenderingUI : MonoBehaviour
 {
-    [SerializeField] private SPH sim;
+    [SerializeField] private SPHRendering simRend;
     public List<ColourMaker> uiGradientColours = new List<ColourMaker>();
     private GradientColorKey[] colourKeys;
     private GradientAlphaKey[] alphaKeys;
+    Gradient colourGradient;
     public void UpdateGradient()
     {
+        colourGradient = new Gradient();
         colourKeys = new GradientColorKey[uiGradientColours.Count];
         alphaKeys = new GradientAlphaKey[uiGradientColours.Count];
         int count = uiGradientColours.Count - 1;
         for (int i = 0; i < uiGradientColours.Count; i++)
         {
-            Debug.Log(i);
             colourKeys[i].color = uiGradientColours[i].colour;
             
             alphaKeys[i].alpha = 1;
@@ -31,21 +32,9 @@ public class RenderingUI : MonoBehaviour
             }
 
         }
-        sim.colourGradient.SetKeys(colourKeys, alphaKeys);
         
-    }
-
-    public void UpdateRenderSize(Slider sl)
-    {
-        sim.particleRenderSize = sl.value;
-    }
-
-    public void UpdateResolution(Slider sl)
-    {
-        sim.resolution = (int)sl.value;
-    }
-    public void UpdateVelocityMax(Slider sl)
-    {
-        sim.particleMaxVelocity = (int)sl.value;
+        colourGradient.SetKeys(colourKeys, alphaKeys);
+        simRend.ProduceColourGradientMap(colourGradient);
+        
     }
 }
