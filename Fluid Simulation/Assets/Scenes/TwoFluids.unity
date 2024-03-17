@@ -13403,6 +13403,7 @@ MonoBehaviour:
   sortingAlgorithm: {fileID: 7200000, guid: 44d0b9a487f5ce6489a6c2a0b5f6c2b1, type: 3}
   particleSetter: {fileID: 1392038050}
   rendering: {fileID: 1392038049}
+  particles: []
 --- !u!4 &1392038047
 Transform:
   m_ObjectHideFlags: 0
@@ -13536,10 +13537,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   particleMesh: {fileID: 10207, guid: 0000000000000000e000000000000000, type: 0}
-  particleRenderSize: 0.2
   material: {fileID: 2100000, guid: dc5415964d9b57c449ff53ad984103c6, type: 2}
   resolution: 50
-  particleMaxVelocity: 50
   showSpheres: 1
   transRef: {fileID: 1624281822}
 --- !u!114 &1392038050
@@ -13555,8 +13554,16 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   particlesPerAxis: 30
-  spawnCenter: {x: 0, y: 0, z: 0}
   spawnJitter: 0.2
+  MultipleFluids: 0
+  standardSpawnCenter: {x: 0, y: 0, z: 0}
+  standardFluidData: {fileID: 11400000, guid: 2318edad9d8d8df4fa3864b15b8dc0e2, type: 2}
+  particlePresets:
+  - {fileID: 11400000, guid: 2318edad9d8d8df4fa3864b15b8dc0e2, type: 2}
+  - {fileID: 11400000, guid: 0a197128cdc4977458c4aaa897eeefbd, type: 2}
+  spawnCenter:
+  - {x: 1, y: 1, z: 1}
+  - {x: 1, y: 1, z: 1}
 --- !u!1 &1399132974
 GameObject:
   m_ObjectHideFlags: 0
