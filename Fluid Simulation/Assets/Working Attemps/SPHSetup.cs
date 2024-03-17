@@ -5,17 +5,17 @@ using UnityEngine;
 public class SPHSetup : MonoBehaviour
 {
     public int particlesPerAxis;
-    public Vector3[] spawnCenter;
     public float spawnJitter = 0.2f;
+    public bool MultipleFluids;
 
+    [Header("Dynamic Single fluid Data")]
+    public Vector3 standardSpawnCenter;
     public SPHParticleData standardFluidData;
 
+    [Header("Static multi fluid Data")]
     public List<SPHParticleData> particlePresets = new List<SPHParticleData>();
+    public Vector3[] spawnCenter;
 
-    private void Awake()
-    {
-       
-    }
 
     public Particle[] SpawnParticlesInBox(int perAxis, Vector3 spawnPoint, SPHParticleData data)
     {
@@ -46,24 +46,27 @@ public class SPHSetup : MonoBehaviour
         return newParticles.ToArray();
     }
 
-    public Particle[] ParticleSpawner(bool dynamicParticles)
+    public Particle[] ParticleSpawner()
     {
-        if (dynamicParticles)
+        if (!MultipleFluids)
         {
-            return SpawnParticlesInBox(particlesPerAxis, spawnCenter[0], standardFluidData);
+            return SpawnParticlesInBox(particlesPerAxis, standardSpawnCenter, standardFluidData);
         }
         else
         {
-            Particle[] staticParticles = new Particle[particlesPerAxis];
-
+            int totalParticles = particlesPerAxis * particlesPerAxis * particlesPerAxis;
+            Particle[] staticParticles = new Particle[totalParticles];
+            Debug.Log(staticParticles);
             int spawnDivide = particlesPerAxis / particlePresets.Count;
             int arraylength = 0;
 
             foreach(SPHParticleData data in particlePresets)
             {
                 Particle[] newParticleBunch = SpawnParticlesInBox(spawnDivide, spawnCenter[particlePresets.IndexOf(data)], data);
+                newParticleBunch.CopyTo(staticParticles, arraylength);
                 arraylength += newParticleBunch.Length;
-                staticParticles.CopyTo(newParticleBunch, arraylength);
+                
+                   
             }
 
             return staticParticles;

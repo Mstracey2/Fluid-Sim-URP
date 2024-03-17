@@ -10,7 +10,7 @@ public class SPHRendering : MonoBehaviour
     public Mesh particleMesh;
     public Material material;
     //public Gradient colourGradient;
-    private int resolution;
+    public int resolution;
 
     Color[] colourMap;
     Texture2D texture;

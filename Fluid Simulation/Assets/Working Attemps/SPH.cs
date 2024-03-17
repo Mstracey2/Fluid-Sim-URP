@@ -32,7 +32,7 @@ public class SPH : MonoBehaviour
     private float particleRadius = 0.7f;
     private int numOfParticleCalc = 3;
     private float timestep;
-    public bool dynamicParticleMultipliers;
+
 
 
     [Header("Mouse")]
@@ -49,7 +49,7 @@ public class SPH : MonoBehaviour
     public SPHRendering rendering;
 
     // buffer Data
-    private Particle[] particles;
+    public Particle[] particles;
     private uint3[] hashDataVect;
     private uint[] offsetHashData;
     private int totalParticles;
@@ -94,7 +94,7 @@ public class SPH : MonoBehaviour
     private void Awake()
     {
         SetGpuTimeStep(0.9f);
-        particles = particleSetter.ParticleSpawner(dynamicParticleMultipliers);
+        particles = particleSetter.ParticleSpawner();
         totalParticles = particles.Length;
 
         _argsBuffer = rendering.CreateMeshArgsBuffer(totalParticles);
