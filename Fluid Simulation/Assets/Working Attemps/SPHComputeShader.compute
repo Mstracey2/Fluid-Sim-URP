@@ -16,6 +16,11 @@ struct Particle {
 	float3 position;
     float3 positionPrediction;
     uint3 hashData;
+    
+    float staticDensityTarget;
+    float staticPressureMulti;
+    float staticNearPressureMulti;
+    float staticViscosityMulti;
 };
 
 RWStructuredBuffer<Particle> _particles;

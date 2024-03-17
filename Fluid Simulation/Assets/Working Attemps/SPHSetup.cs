@@ -5,20 +5,23 @@ using UnityEngine;
 public class SPHSetup : MonoBehaviour
 {
     public int particlesPerAxis;
-    private Vector3Int numToSpawn;
-    public Vector3 spawnCenter;
+    public Vector3[] spawnCenter;
     public float spawnJitter = 0.2f;
+
+    public SPHParticleData standardFluidData;
+
+    public List<SPHParticleData> particlePresets = new List<SPHParticleData>();
 
     private void Awake()
     {
        
     }
 
-    public Particle[] SpawnParticlesInBox()
+    public Particle[] SpawnParticlesInBox(int perAxis, Vector3 spawnPoint, SPHParticleData data)
     {
-        numToSpawn = new Vector3Int(particlesPerAxis, particlesPerAxis, particlesPerAxis);
-        Vector3 spawnPoint = spawnCenter;
+        Vector3Int numToSpawn = new Vector3Int(perAxis, perAxis, perAxis);
         List<Particle> newParticles = new List<Particle>();
+
         for (int x = 0; x < numToSpawn.x; x++)
         {
             for (int y = 0; y < numToSpawn.y; y++)
@@ -29,13 +32,43 @@ public class SPHSetup : MonoBehaviour
                     spawnPos += Random.onUnitSphere * spawnJitter;
                     Particle p = new Particle
                     {
-                        position = spawnPos
+                        position = spawnPos,
+                        staticDensityTarget = data.densityTarget,
+                        staticPressureMulti = data.pressureForce,
+                        staticNearPressureMulti = data.nearPressureForce,
+                        staticViscosityMulti = data.viscosity
                     };
+
                     newParticles.Add(p);
                 }
             }
         }
         return newParticles.ToArray();
+    }
+
+    public Particle[] ParticleSpawner(bool dynamicParticles)
+    {
+        if (dynamicParticles)
+        {
+            return SpawnParticlesInBox(particlesPerAxis, spawnCenter[0], standardFluidData);
+        }
+        else
+        {
+            Particle[] staticParticles = new Particle[particlesPerAxis];
+
+            int spawnDivide = particlesPerAxis / particlePresets.Count;
+            int arraylength = 0;
+
+            foreach(SPHParticleData data in particlePresets)
+            {
+                Particle[] newParticleBunch = SpawnParticlesInBox(spawnDivide, spawnCenter[particlePresets.IndexOf(data)], data);
+                arraylength += newParticleBunch.Length;
+                staticParticles.CopyTo(newParticleBunch, arraylength);
+            }
+
+            return staticParticles;
+
+        }
     }
 
 
@@ -48,8 +81,12 @@ public class SPHSetup : MonoBehaviour
 
         if (!Application.isPlaying)
         {
-            Gizmos.color = Color.cyan;
-            Gizmos.DrawWireSphere(spawnCenter, 0.1f);
+            foreach(Vector3 vect in spawnCenter)
+            {
+                Gizmos.color = Color.cyan;
+                Gizmos.DrawWireSphere(vect, 0.1f);
+            }
+
         }
         Gizmos.matrix = matrix;
     }

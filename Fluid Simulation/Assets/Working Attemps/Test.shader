@@ -34,6 +34,7 @@ Shader "Unlit/Test"
             SAMPLER(sampler_MainTex);
             float _size;
             float maxVel;
+
             struct Particle
             {
                 float3 pressure;
@@ -43,6 +44,11 @@ Shader "Unlit/Test"
                 float3 position;
                 float3 positionPrediction;
                 uint3 hashData;
+
+                float staticDensityTarget;
+                float staticPressureMulti;
+                float staticNearPressureMulti;
+                float staticViscosityMulti;
             };
 
             StructuredBuffer<Particle> _particlesBuffer;
