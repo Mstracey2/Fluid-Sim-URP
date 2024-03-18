@@ -21,6 +21,7 @@ struct Particle {
     float staticPressureMulti;
     float staticNearPressureMulti;
     float staticViscosityMulti;
+    float3 staticColour;
 };
 
 RWStructuredBuffer<Particle> _particles;
@@ -45,6 +46,7 @@ float mouseRadius;
 float pushPullForce;
 bool pull;
 bool push;
+bool staticFluidMultipliers;
 
 static const int xThreads = 100;
 
@@ -81,7 +83,7 @@ void GetSpacialHash(uint3 id : SV_DISPATCHTHREADID)
     int3 convertedCellSpace = intCoord(_particles[index].positionPrediction, radius);
     uint hash = Hash(convertedCellSpace);
     uint Key = HashKey(hash, particleLength);
-    //_particles[index].hashData = uint3(index,hash,Key);
+    _particles[index].hashData = uint3(index,hash,Key);
     hashData[index] =  uint3(index, hash, Key);;
 
 }
@@ -185,14 +187,37 @@ float ViscosityKernal_RoundedGradient(float dist)
 }
 
 // calculates how much pressure is required in order for the particle to reach its target density.
-float GetPressureFromDensity(float density)
+float GetPressureFromDensity(float density, float index)
 {
-    return (density - densityTarget) * pressureMulti;
+    float densTarget;
+    float pressure;
+    
+    if (staticFluidMultipliers)
+    {
+        densTarget = _particles[index].staticDensityTarget;
+        pressure = _particles[index].staticPressureMulti;
+    }
+    else
+    {
+        densTarget = densityTarget;
+        pressure = pressureMulti;
+    }
+    
+    return (density - densTarget) * pressure;
 }
 
-float NearPressureFromDensity(float nearDensity)
+float NearPressureFromDensity(float nearDensity, float index)
 {
-    return nearDensity * nearPressureMulti;
+    float nearPressure;
+    if (staticFluidMultipliers)
+    {
+        nearPressure = _particles[index].staticNearPressureMulti;
+    }
+    else
+    {
+        nearPressure = nearPressureMulti;
+    }
+    return nearDensity * nearPressure;
 }
 
 /*
@@ -200,17 +225,17 @@ float NearPressureFromDensity(float nearDensity)
     for every action (force) in nature there is an equal and opposite reaction.
     To do this, we must calculate a shared equal pressure by getting the mean avarage of both pressures.
 */
-float GetSharedPressure(float denA, float denB)
+float GetSharedPressure(float denA, float denB, float index)
 {
-    float pressure1 = GetPressureFromDensity(denA);
-    float pressure2 = GetPressureFromDensity(denB);
+    float pressure1 = GetPressureFromDensity(denA, index);
+    float pressure2 = GetPressureFromDensity(denB, index);
     return (pressure1 + pressure2) / 2;
 }
 
-float GetNearSharedPressure(float denA, float denB)
+float GetNearSharedPressure(float denA, float denB, float index)
 {
-    float pressure1 = NearPressureFromDensity(denA);
-    float pressure2 = NearPressureFromDensity(denB);
+    float pressure1 = NearPressureFromDensity(denA,index);
+    float pressure2 = NearPressureFromDensity(denB,index);
     return (pressure1 + pressure2) / 2;
 }
 
@@ -255,11 +280,7 @@ void CalculateDensity(uint id : SV_DispatchThreadID)
             
             uint neighbor = offsetCellData[0];
             float2 dist = DistanceIn3DSpace(particlePos, _particles[neighbor].positionPrediction);
-        
-            //if (neighbor == id.x)
-            //{
-            //    continue;
-            //}
+
             
             if (dist[0] > radiusSqr)
             {
@@ -323,9 +344,9 @@ void CalculatePressure(uint id : SV_DispatchThreadID)
             
             float3 dir = dist[1] > 0 ? (_particles[neighbor].positionPrediction - particlePos) / dist[1] : float3(0, 1, 0);
             float gradientInfl = DerivativeDensityKernal_DerivativeSpikedGradient(dist[1]);
-            pressureForce += dir * gradientInfl * GetSharedPressure(_particles[id.x].density[0], _particles[neighbor].density[0]) / _particles[neighbor].density[0];
+            pressureForce += dir * gradientInfl * GetSharedPressure(_particles[id.x].density[0], _particles[neighbor].density[0],id.x) / _particles[neighbor].density[0];
             gradientInfl = NearDerivativeDensityKernel_GreaterDerivativeSpikedGradient(dist[1]);
-            pressureForce += dir * gradientInfl * GetNearSharedPressure(_particles[id.x].density[1], _particles[neighbor].density[1]) / _particles[neighbor].density[1];
+            pressureForce += dir * gradientInfl * GetNearSharedPressure(_particles[id.x].density[1], _particles[neighbor].density[1],id.x) / _particles[neighbor].density[1];
         }
     }
     
@@ -384,7 +405,14 @@ void CalculateViscosity(uint id : SV_DispatchThreadID)
             viscosityForce += (_particles[neighbor].velocity - currentVel) * gradientInfl;
         }
     }
-    _particles[id.x].velocity += (viscosityForce * viscosityMulti) * timestep;
+    if (staticFluidMultipliers)
+    {
+        _particles[id.x].velocity += (viscosityForce * _particles[id.x].staticViscosityMulti) * timestep;
+    }
+    else
+    {
+        _particles[id.x].velocity += (viscosityForce * viscosityMulti) * timestep;
+    }
 
 }
 

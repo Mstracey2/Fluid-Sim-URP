@@ -49,6 +49,7 @@ Shader "Unlit/Test"
                 float staticPressureMulti;
                 float staticNearPressureMulti;
                 float staticViscosityMulti;
+                float3 colour;
             };
 
             StructuredBuffer<Particle> _particlesBuffer;
@@ -100,9 +101,14 @@ Shader "Unlit/Test"
                     {
                         gradientValue = _particlesBuffer[instanceID].position;
                     }
+                    else if (gradientChoice == 4) 
+                    {
+                        o.colour = _particlesBuffer[instanceID].colour;
+                        return o;
+                    }
 
                     float speed = saturate(length(gradientValue) / maxVel);
-                    o.colour = ColourMap.SampleLevel(linear_clamp_sampler, float2(speed, 0.5), 0); //float3(0,0, length(_particlesBuffer[instanceID].velocity));
+                    o.colour = ColourMap.SampleLevel(linear_clamp_sampler, float2(speed, 0.5), 0);
 
 
                     return o;

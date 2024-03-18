@@ -7,7 +7,7 @@ using Unity.Mathematics;
 using System;
 
 [System.Serializable]
-[StructLayout(LayoutKind.Sequential, Size = 96)]
+[StructLayout(LayoutKind.Sequential, Size = 108)]
 public struct Particle
 {
     public Vector3 pressure;
@@ -22,6 +22,7 @@ public struct Particle
     public float staticPressureMulti;
     public float staticNearPressureMulti;
     public float staticViscosityMulti;
+    public Vector3 colour;
 };
 
 
@@ -94,12 +95,13 @@ public class SPH : MonoBehaviour
     private void Awake()
     {
         SetGpuTimeStep(0.9f);
+        
         particles = particleSetter.ParticleSpawner();
         totalParticles = particles.Length;
 
         _argsBuffer = rendering.CreateMeshArgsBuffer(totalParticles);
 
-        _particleBuffer = new ComputeBuffer(totalParticles, 96);
+        _particleBuffer = new ComputeBuffer(totalParticles, 108);
         _particleBuffer.SetData(particles);
 
         hashDataVect = new uint3[totalParticles];
@@ -121,6 +123,11 @@ public class SPH : MonoBehaviour
         SPHComputeshader.SetFloat("radius", particleRadius);
         SPHComputeshader.SetInt("particleLength", totalParticles);
         SPHComputeshader.SetFloat("pi", Mathf.PI);
+        SPHComputeshader.SetBool("staticFluidMultipliers", particleSetter.MultipleFluids);
+        if (particleSetter.MultipleFluids)
+        {
+            rendering.SetShaderFloat("gradientChoice", 4);
+        }
     }
 
     private void FixedUpdate()
