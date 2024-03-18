@@ -8,11 +8,9 @@ public class SPHRendering : MonoBehaviour
 
     [Header("Particle Rendering")]
     public Mesh particleMesh;
-    public float particleRenderSize = 8f;
     public Material material;
     //public Gradient colourGradient;
     public int resolution;
-    public int particleMaxVelocity;
 
     Color[] colourMap;
     Texture2D texture;

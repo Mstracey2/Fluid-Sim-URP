@@ -7,7 +7,7 @@ using Unity.Mathematics;
 using System;
 
 [System.Serializable]
-[StructLayout(LayoutKind.Sequential, Size = 76)]
+[StructLayout(LayoutKind.Sequential, Size = 108)]
 public struct Particle
 {
     public Vector3 pressure;
@@ -17,7 +17,13 @@ public struct Particle
     public Vector3 position;
     public Vector3 positionPrediction;
     public uint3 hashData;
-}
+
+    public float staticDensityTarget;
+    public float staticPressureMulti;
+    public float staticNearPressureMulti;
+    public float staticViscosityMulti;
+    public Vector3 colour;
+};
 
 
 public class SPH : MonoBehaviour
@@ -27,6 +33,8 @@ public class SPH : MonoBehaviour
     private float particleRadius = 0.7f;
     private int numOfParticleCalc = 3;
     private float timestep;
+
+
 
     [Header("Mouse")]
     public GameObject mouseSphereRef;
@@ -42,7 +50,7 @@ public class SPH : MonoBehaviour
     public SPHRendering rendering;
 
     // buffer Data
-    private Particle[] particles;
+    public Particle[] particles;
     private uint3[] hashDataVect;
     private uint[] offsetHashData;
     private int totalParticles;
@@ -87,12 +95,13 @@ public class SPH : MonoBehaviour
     private void Awake()
     {
         SetGpuTimeStep(0.9f);
-        particles = particleSetter.SpawnParticlesInBox();
+        
+        particles = particleSetter.ParticleSpawner();
         totalParticles = particles.Length;
 
         _argsBuffer = rendering.CreateMeshArgsBuffer(totalParticles);
 
-        _particleBuffer = new ComputeBuffer(totalParticles, 80);
+        _particleBuffer = new ComputeBuffer(totalParticles, 108);
         _particleBuffer.SetData(particles);
 
         hashDataVect = new uint3[totalParticles];
@@ -114,6 +123,11 @@ public class SPH : MonoBehaviour
         SPHComputeshader.SetFloat("radius", particleRadius);
         SPHComputeshader.SetInt("particleLength", totalParticles);
         SPHComputeshader.SetFloat("pi", Mathf.PI);
+        SPHComputeshader.SetBool("staticFluidMultipliers", particleSetter.MultipleFluids);
+        if (particleSetter.MultipleFluids)
+        {
+            rendering.SetShaderFloat("gradientChoice", 4);
+        }
     }
 
     private void FixedUpdate()

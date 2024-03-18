@@ -9,4 +9,5 @@ public class SPHParticleData : ScriptableObject
     public float pressureForce;
     public float nearPressureForce;
     public float viscosity;
+    public Color colour;
 }
