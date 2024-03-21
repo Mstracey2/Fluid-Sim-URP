@@ -190,7 +190,7 @@ public class SPH : MonoBehaviour
     private void SimulateParticles(float frames)
     {
         float timeStepper = Time.fixedDeltaTime / numOfParticleCalc * timestep;
-        //SetComputeVariables(timeStepper);
+        SetComputeVariables(timeStepper);
 
         shader.Dispatch(externalKernel, totalParticles / thread, 1, 1);
 

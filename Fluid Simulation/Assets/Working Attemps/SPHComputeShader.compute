@@ -266,9 +266,9 @@ void CalculateDensity(uint id : SV_DispatchThreadID)
                 continue;
             }
             float gradientInfl = DensityKernal_SpikedGradient(dist[1]);
-            dens = gradientInfl;
+            dens += gradientInfl;
             gradientInfl = NearDensityKernal_GreaterSpikedGradient(dist[1]);
-            nearDens = gradientInfl ;
+            nearDens += gradientInfl ;
         }
     }
     _particles[id.x].density = float2(dens, nearDens) ;
