@@ -61,7 +61,7 @@ public class SPH : MonoBehaviour
     private ComputeBuffer _offsetHashData;
 
     private GPUSort bufferSorter;
-
+    public float near;
     //Kernals
     private int externalKernel;
     private int densityKernel;
@@ -168,7 +168,7 @@ public class SPH : MonoBehaviour
         SPHComputeshader.Dispatch(pressureKernel, totalParticles / thread, 1 , 1);
         SPHComputeshader.Dispatch(viscosityKernel, totalParticles / thread, 1 , 1);
         SPHComputeshader.Dispatch(forceKernel, totalParticles / thread, 1 , 1);
-
+        SPHComputeshader.SetFloat("pressureMulti", near);
         //_particleBuffer.GetData(particles);
         //_hashData.GetData(hashDataVect);
         //_offsetHashData.GetData(offsetHashData);
@@ -176,6 +176,7 @@ public class SPH : MonoBehaviour
 
     public void SetGpuFloat(string variable, float value)
     {
+        Debug.Log(value);
         SPHComputeshader.SetFloat(variable, value);
     }
 
