@@ -168,7 +168,6 @@ public class SPH : MonoBehaviour
         SPHComputeshader.Dispatch(pressureKernel, totalParticles / thread, 1 , 1);
         SPHComputeshader.Dispatch(viscosityKernel, totalParticles / thread, 1 , 1);
         SPHComputeshader.Dispatch(forceKernel, totalParticles / thread, 1 , 1);
-        SPHComputeshader.SetFloat("pressureMulti", near);
         //_particleBuffer.GetData(particles);
         //_hashData.GetData(hashDataVect);
         //_offsetHashData.GetData(offsetHashData);
