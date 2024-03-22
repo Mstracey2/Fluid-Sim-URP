@@ -33,7 +33,7 @@ public class SPH : MonoBehaviour
     private float particleRadius = 0.7f;
     private int numOfParticleCalc = 3;
     private float timestep;
-
+    
 
 
     [Header("Mouse")]
@@ -61,7 +61,7 @@ public class SPH : MonoBehaviour
     private ComputeBuffer _offsetHashData;
 
     private GPUSort bufferSorter;
-    public float near;
+
     //Kernals
     private int externalKernel;
     private int densityKernel;
@@ -95,39 +95,15 @@ public class SPH : MonoBehaviour
     private void Awake()
     {
         SetGpuTimeStep(0.9f);
-        
-        particles = particleSetter.ParticleSpawner();
-        totalParticles = particles.Length;
 
-        _argsBuffer = rendering.CreateMeshArgsBuffer(totalParticles);
-
-        _particleBuffer = new ComputeBuffer(totalParticles, 108);
-        _particleBuffer.SetData(particles);
-
-        hashDataVect = new uint3[totalParticles];
-        offsetHashData = new uint[totalParticles];
-
-        for(int i = 0;  i < offsetHashData.Length; i++)
-        {
-            offsetHashData[i] = (uint)totalParticles;
-        }
-
-        _hashData = new ComputeBuffer(totalParticles, 12);
-        _hashData.SetData(hashDataVect);
-        _offsetHashData = new ComputeBuffer(totalParticles, 4);
-        _offsetHashData.SetData(offsetHashData);
-        
-        FindKernelsAndSetBuffers();
+        SetParticles();
 
         //constant GPU values.
         SPHComputeshader.SetFloat("radius", particleRadius);
         SPHComputeshader.SetInt("particleLength", totalParticles);
         SPHComputeshader.SetFloat("pi", Mathf.PI);
-        SPHComputeshader.SetBool("staticFluidMultipliers", particleSetter.MultipleFluids);
-        if (particleSetter.MultipleFluids)
-        {
-            rendering.SetShaderFloat("gradientChoice", 4);
-        }
+        
+       
     }
 
     private void FixedUpdate()
@@ -222,10 +198,47 @@ public class SPH : MonoBehaviour
 
         bufferSorter = new GPUSort(sortingAlgorithm);
         bufferSorter.SetBuffers(_hashData, _offsetHashData);
-         
+
     }
 
-    
+    public void SetParticles()
+    {
+        SPHComputeshader.SetBool("staticFluidMultipliers", particleSetter.MultipleFluids);
+        if (particles.Length > 0)
+        {
+            ReleaseBuffers();
+            bufferSorter.ReleaseBuffers();
+        }
+        particles = particleSetter.ParticleSpawner();
+        totalParticles = particles.Length;
+
+        _argsBuffer = rendering.CreateMeshArgsBuffer(totalParticles);
+
+        _particleBuffer = new ComputeBuffer(totalParticles, 108);
+        _particleBuffer.SetData(particles);
+
+        hashDataVect = new uint3[totalParticles];
+        offsetHashData = new uint[totalParticles];
+
+        for (int i = 0; i < offsetHashData.Length; i++)
+        {
+            offsetHashData[i] = (uint)totalParticles;
+        }
+        _hashData = new ComputeBuffer(totalParticles, 12);
+        _hashData.SetData(hashDataVect);
+        _offsetHashData = new ComputeBuffer(totalParticles, 4);
+        _offsetHashData.SetData(offsetHashData);
+        FindKernelsAndSetBuffers();
+        
+        if (particleSetter.MultipleFluids)
+        {
+            rendering.SetShaderFloat("gradientChoice", 4);
+        }
+        else
+        {
+            rendering.SetShaderFloat("gradientChoice", 1);
+        }
+    }
 
     public void PushParticles(InputAction.CallbackContext context)
     {
@@ -253,9 +266,15 @@ public class SPH : MonoBehaviour
 
     void OnDestroy()
     {
+        ReleaseBuffers();
+    }
+
+    public void ReleaseBuffers()
+    {
         _argsBuffer.Release();
         _particleBuffer.Release();
         _offsetHashData.Release();
         _hashData.Release();
     }
+
 }

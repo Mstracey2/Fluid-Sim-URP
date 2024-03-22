@@ -90,17 +90,9 @@ public class SPHSetup : MonoBehaviour
         }
     }
 
-    void RoundListToThread(List<Particle> particleList)
+    public void SetMultiFluids()
     {
-        float tar = (particleList.Count / 1000);
-        int targetAmount = (int)Math.Floor(tar);
-        targetAmount = targetAmount * 1000;
-        int count = targetAmount;
-        while(particleList.Count != targetAmount)
-        {
-            particleList.RemoveAt(count);
-            count--;
-        }
+        MultipleFluids = !MultipleFluids;
     }
 
     private void OnDrawGizmos()

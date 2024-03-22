@@ -54,6 +54,10 @@ public class GPUSort
         }
     }
 
+    public void ReleaseBuffers()
+    {
+        indexBuffer.Release();
+    }
 
     public void SortAndCalculateOffsets()
     {
