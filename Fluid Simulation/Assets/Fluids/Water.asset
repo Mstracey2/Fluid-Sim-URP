@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 32c755cdf17d34d4d8d85111da9375e9, type: 3}
   m_Name: Water
   m_EditorClassIdentifier: 
-  densityTarget: 21.8
+  densityTarget: 37
   pressureForce: 300
   nearPressureForce: 25
   viscosity: 0.12

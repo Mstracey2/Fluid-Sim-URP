@@ -124,7 +124,7 @@ void DetectBounds(uint idex)
     
 }
 
-//This Kernal type is used for the calculation of density. Theoretically, the peak is a spiked top with a harsh decline
+//This gradient type is used for the calculation of density. Theoretically, the peak is a spiked top with a harsh decline
 float DensityKernal_SpikedGradient(float dist)
 {
     if (dist < radius)
@@ -148,9 +148,10 @@ float NearDensityKernal_GreaterSpikedGradient(float dist)
 }
 
 /*
-    This gradient type is used for the calculation of pressure. It has the same gradient pattern as the density, but we use this instead.
-    The reasoning to why this Kernal makes the sim work and the regular density kernal doesn't, for this case, the distance between the particle reduces the value of the gradient of the kernel becomes zero making the pressure force zero.
-    To avoid this, we use a modified kernal (a SPH Approximation) which in turn, gives us a modified pressure that is proportional to the density deviation. More can be found here: https://www.diva-portal.org/smash/get/diva2:573583/FULLTEXT01.pdf
+    These Derivative kernels are used to find the certain point within the density gradient. For example, if t a particle is close to another, 
+    the force will be stronger, meaning we need the point on the gradient that is somewhere around its peak.
+
+    This kernel will calculate the exact point on that gradient, and return the pressure value.
 */
 float DerivativeDensityKernal_DerivativeSpikedGradient(float dist)
 {

@@ -12,8 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 32c755cdf17d34d4d8d85111da9375e9, type: 3}
   m_Name: Syrup
   m_EditorClassIdentifier: 
-  densityTarget: 50
+  densityTarget: 80
   pressureForce: 500
   nearPressureForce: 50
-  viscosity: 3
-  colour: {r: 0.9245283, g: 0.5638767, b: 0, a: 0}
+  viscosity: 2.4
+  colour: {r: 0.9339623, g: 0.79097754, b: 0.18062477, a: 0}

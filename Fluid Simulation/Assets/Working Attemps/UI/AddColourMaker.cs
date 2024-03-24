@@ -42,6 +42,7 @@ public class AddColourMaker : MonoBehaviour
 
             Destroy(rendUI.uiGradientColours[gradientCount - 1].gameObject);
             rendUI.uiGradientColours.RemoveAt(gradientCount - 1);
+            rendUI.UpdateGradient();
             gradientCount--;
 
             if (gradientCount == 2) { removeButton.interactable = false; }
