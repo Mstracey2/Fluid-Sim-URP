@@ -90,10 +90,9 @@ public class SPH : MonoBehaviour
         NA,
     }
 
-
-
     private void Awake()
     {
+        Screen.fullScreen = true;
         SetGpuTimeStep(0.9f);
 
         SetParticles();
@@ -207,7 +206,7 @@ public class SPH : MonoBehaviour
         if (particles.Length > 0)
         {
             ReleaseBuffers();
-            bufferSorter.ReleaseBuffers();
+           
         }
         particles = particleSetter.ParticleSpawner();
         totalParticles = particles.Length;
@@ -275,6 +274,7 @@ public class SPH : MonoBehaviour
         _particleBuffer.Release();
         _offsetHashData.Release();
         _hashData.Release();
+        bufferSorter.ReleaseBuffers();
     }
 
 }

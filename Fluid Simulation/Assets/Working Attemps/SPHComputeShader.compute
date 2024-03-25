@@ -62,11 +62,11 @@ void CalculateExternalForces(uint3 id : SV_DISPATCHTHREADID)
     {
         if (pull)
         {
-            _particles[id.x].velocity -= dir * pushPullForce;
+            _particles[id.x].external -= dir * pushPullForce;
         }
         if (push)
         {
-            _particles[id.x].velocity += dir * pushPullForce;
+            _particles[id.x].external += dir * pushPullForce;
         }
     }
     _particles[id.x].positionPrediction = _particles[id.x].position + _particles[id.x].velocity * 1 / predictionIteration;
@@ -287,6 +287,7 @@ void CalculateDensity(uint id : SV_DispatchThreadID)
             {
                 continue;
             }
+            
             float gradientInfl = DensityKernal_SpikedGradient(dist[1]);
             dens += gradientInfl;
             gradientInfl = NearDensityKernal_GreaterSpikedGradient(dist[1]);
@@ -295,6 +296,46 @@ void CalculateDensity(uint id : SV_DispatchThreadID)
     }
     _particles[id.x].density = float2(dens, nearDens) ;
 	
+}
+
+
+uint NeighborIDFinder(int index)
+{
+    float3 particlePos = _particles[index].positionPrediction;
+    float radiusSqr = radius * radius;
+    int3 particleCell = intCoord(_particles[index].positionPrediction, radius);
+    for (int i = 0; i < 27; i++)
+    {
+        uint neighborCellHash = Hash(particleCell + offsets3D[i]);
+        uint key = HashKey(neighborCellHash, particleLength);
+        uint currentOffsetKey = hashOffsetData[key];
+        while (currentOffsetKey < particleLength)
+        {
+            uint3 offsetCellData = hashData[currentOffsetKey];
+            currentOffsetKey++;
+            
+            if (offsetCellData[2] != key)
+            {
+                break;
+            }
+            if (offsetCellData[1] != neighborCellHash)
+            {
+                continue;
+            }
+            
+            
+            uint neighbor = offsetCellData[0];
+            float2 dist = DistanceIn3DSpace(particlePos, _particles[neighbor].positionPrediction);
+
+            
+            if (dist[0] > radiusSqr)
+            {
+                continue;
+            }
+            
+            return neighbor;
+        }
+    }
 }
 
 // calculates particle pressure, REQUIRES THE CALCULATION OF DENSITY TO KNOW HOW MUCH PRESSURE THE PARTICLE IS UNDER
@@ -420,7 +461,7 @@ void CalculateViscosity(uint id : SV_DispatchThreadID)
 [numthreads(xThreads, 1, 1)]
 void ApplyForces(uint id : SV_DispatchThreadID)
 {
-    _particles[id.x].external = float3(0, gravity, 0) * timestep;
+    _particles[id.x].external += float3(0, gravity, 0) * timestep;
     
     _particles[id.x].velocity += _particles[id.x].external ;
     
