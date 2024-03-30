@@ -1,4 +1,4 @@
-Shader "Unlit/Test"
+Shader "Unlit/GradientParticles"
 {
     Properties
     {

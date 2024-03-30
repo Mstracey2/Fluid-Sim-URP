@@ -32,7 +32,6 @@ public class SPHRendering : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        CalculateBoxVertices();
         if (showSpheres)
         {
             Graphics.DrawMeshInstancedIndirect(particleMesh, 0, material, new Bounds(Vector3.zero, boxSize), argsRendRef, castShadows: UnityEngine.Rendering.ShadowCastingMode.Off);
@@ -41,7 +40,7 @@ public class SPHRendering : MonoBehaviour
     }
 
     public Transform transRef;
-    private void CalculateBoxVertices()
+    public void CalculateBoxVertices()
     {
         var trans = transRef;
         var min = trans.localPosition - trans.localScale * 0.5f;

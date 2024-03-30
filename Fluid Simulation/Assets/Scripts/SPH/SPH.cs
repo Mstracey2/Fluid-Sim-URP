@@ -163,6 +163,7 @@ public class SPH : MonoBehaviour
     {
         SPHComputeshader.SetMatrix("worldMatrix", transform.localToWorldMatrix);
         SPHComputeshader.SetMatrix("localMatrix", transform.worldToLocalMatrix);
+        rendering.CalculateBoxVertices();
     }
 
     private void FindKernelsAndSetBuffers()
