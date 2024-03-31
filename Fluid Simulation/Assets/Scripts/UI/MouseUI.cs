@@ -3,6 +3,12 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.Events;
+
+/*MOUSE UI
+ * 
+ * Simple script to update mouse variables
+ */
+
 public class MouseUI : SetSliderValue
 {
     [SerializeField] private MouseParticleMover mouseMover;
@@ -12,6 +18,11 @@ public class MouseUI : SetSliderValue
     {
         mouseEvent.Invoke();
     }
+
+    /*
+     * functions below are unique to updating mouse variables
+     * 
+     */
 
     public void UpdateSensitivity()
     {
@@ -23,8 +34,5 @@ public class MouseUI : SetSliderValue
         mouseMover.Radius(slider.value);
         SetValueFromSlider();
     }
-
-
-
 
 }

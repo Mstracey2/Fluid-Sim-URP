@@ -4,11 +4,15 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
+/*SET BUTTON VALUE RENDER
+ * 
+ * Button calls for SPH Rendering
+ */
+
 public class SetButtonValueRender : MonoBehaviour
 {
     public SPH.GPUVariables variable;
     [SerializeField] private SPHRendering smoothParticleHydroRendering;
-
 
     private void Awake()
     {

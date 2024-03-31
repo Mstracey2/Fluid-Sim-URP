@@ -5,12 +5,18 @@ using UnityEngine;
 using UnityEngine.UI;
 using static SPH;
 
+/*SETSLIDERVALUE
+ * 
+ * Standard script attached to the UI sliders.
+ * 
+ * Passes the slider value to the SPH along with the variable to change in the compute shader.
+ */
+
 public class SetSliderValue : MonoBehaviour
 {
     protected Slider slider;
     public SPH.GPUVariables variable;
-    [SerializeField] private SPH smoothParticleHydro;
-    
+    [SerializeField] private SPH sim;
 
     private void Awake()
     {
@@ -20,8 +26,8 @@ public class SetSliderValue : MonoBehaviour
 
     public void SetValueFromSlider()
     {
-        string enumValueString = Enum.GetName(typeof(SPH.GPUVariables), variable);
-        smoothParticleHydro.SetGpuFloat(enumValueString, slider.value);
+        string enumValueString = Enum.GetName(typeof(SPH.GPUVariables), variable);      //gets the name of the enum
+        sim.SetGpuFloat(enumValueString, slider.value);
     }
 
 }

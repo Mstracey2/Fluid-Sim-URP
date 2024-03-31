@@ -4,12 +4,19 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
+/*SET SLIDER VALUE RENDER
+ * 
+ * Setting slider values for SPH rendering
+ * 
+ */
+
 public class SetSliderValueRender : MonoBehaviour
 {
+    #region Variables
     protected Slider slider;
     public SPH.GPUVariables variable;
     [SerializeField] private SPHRendering smoothParticleHydroRend;
-
+    #endregion
 
     private void Awake()
     {

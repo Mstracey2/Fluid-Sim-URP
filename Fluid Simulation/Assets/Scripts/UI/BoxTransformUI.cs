@@ -3,18 +3,28 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
+/*BOX TRANSFORM UI
+ * 
+ * Script that manages the transform changes on the sim box.
+ * 
+ */
+
 public class BoxTransformUI : MonoBehaviour
 {
+    #region Variables
     [SerializeField] private SPH sim;
     private Transform simBox;
 
+    //starting transforms
     Vector3 startingPos;
     Vector3 startingRot;
     Vector3 startingScale;
 
+    //the offset from starting transforms
     Vector3 offsetPos;
     Vector3 offsetRot;
     Vector3 offsetScale;
+    #endregion
 
     public enum TransformType
     {
@@ -38,8 +48,10 @@ public class BoxTransformUI : MonoBehaviour
 
     }
 
+
     public void ChangeTransform(TransformType trans, XYZ transXYZ, float value)
     {
+        //checks whether its dealing with a pos, rot or scale change
         switch (trans)
         {
             case TransformType.Position:
@@ -70,6 +82,7 @@ public class BoxTransformUI : MonoBehaviour
         sim.SetGpuMatrix();
     }
 
+    //adds the new val to the starting vector
     private Vector3 SetValues(Vector3 newVals, Vector3 startingVect)
     {
         return new Vector3(startingVect.x + newVals.x, startingVect.y + newVals.y, startingVect.z + newVals.z);
@@ -77,6 +90,7 @@ public class BoxTransformUI : MonoBehaviour
 
     private Vector3 CheckXYZ( XYZ transXYZ, float value, Vector3 originVect)
     {
+        //checks whether its dealing with a x,y or z change
         switch (transXYZ)
         {
             case XYZ.x:

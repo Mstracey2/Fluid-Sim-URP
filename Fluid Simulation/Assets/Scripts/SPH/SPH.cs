@@ -247,10 +247,7 @@ public class SPH : MonoBehaviour
         _argsBuffer = rendering.CreateMeshArgsBuffer(totalParticles);
         _particleBuffer = new ComputeBuffer(totalParticles, 120);
         _particleBuffer.SetData(particles);
-        for (int i = 0; i < offsetHashData.Length; i++)
-        {
-            offsetHashData[i] = (uint)totalParticles;
-        }
+        
 
         //hash data buffer setup
         hashDataVect = new uint3[totalParticles];
@@ -259,6 +256,10 @@ public class SPH : MonoBehaviour
         _hashData.SetData(hashDataVect);
         _offsetHashData = new ComputeBuffer(totalParticles, 4);
         _offsetHashData.SetData(offsetHashData);
+        for (int i = 0; i < offsetHashData.Length; i++)
+        {
+            offsetHashData[i] = (uint)totalParticles;
+        }
 
         FindKernelsAndSetBuffers();
         

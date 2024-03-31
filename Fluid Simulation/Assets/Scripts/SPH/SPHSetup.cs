@@ -3,6 +3,15 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+
+/*SPH SETUP
+ * 
+ * Script that holds the primary functionality for the SPH Sim.
+ * 
+ * Calls the setup for the sim, 
+ * along with dispatching compute shader kernels on a time step.
+ */
+
 public class SPHSetup : MonoBehaviour
 {
     public int particlesPerAxis;
