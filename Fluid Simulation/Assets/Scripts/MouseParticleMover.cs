@@ -38,7 +38,7 @@ public class MouseParticleMover : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        refPoint.transform.position = cam.ScreenToWorldPoint(new Vector3(Input.mousePosition.x, Input.mousePosition.y, cam.transform.position.z + offset));
+        refPoint.transform.position = cam.ScreenToWorldPoint(new Vector3(Input.mousePosition.x, Input.mousePosition.y, cam.transform.position.z + offset)); //updates pos to mouse pos
     }
 
     public void Scroll(InputAction.CallbackContext context)
