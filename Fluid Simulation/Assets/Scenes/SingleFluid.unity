@@ -9667,7 +9667,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 154.3, y: 0}
   m_SizeDelta: {x: 200, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &934576717
@@ -14920,7 +14920,7 @@ LineRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 0}
+  - {fileID: 2100000, guid: ba43966eaafb81a4d9f73b815683b5e9, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -14952,7 +14952,7 @@ LineRenderer:
       m_Curve:
       - serializedVersion: 3
         time: 0
-        value: 0.20224762
+        value: 0.20949554
         inSlope: 0
         outSlope: 0
         tangentMode: 0
@@ -25038,7 +25038,7 @@ MonoBehaviour:
   nearPressure: {fileID: 1484393859}
   viscosity: {fileID: 1728169709}
   puttyData: {fileID: 11400000, guid: 0a197128cdc4977458c4aaa897eeefbd, type: 2}
-  waveData: {fileID: 11400000, guid: 2318edad9d8d8df4fa3864b15b8dc0e2, type: 2}
+  defaultData: {fileID: 11400000, guid: 2318edad9d8d8df4fa3864b15b8dc0e2, type: 2}
   gravity: {fileID: 1325783690}
 --- !u!114 &2142860363
 MonoBehaviour:
