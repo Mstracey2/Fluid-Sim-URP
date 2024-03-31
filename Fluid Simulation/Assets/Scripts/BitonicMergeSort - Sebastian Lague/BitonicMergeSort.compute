@@ -1,9 +1,9 @@
 #pragma kernel Sort
 #pragma kernel CalculateOffsets
 
-
-// READ ME: CODE IN THIS COMPUTE WAS NOT DESIGNED BY ME AND WAS USED FOR THE PURPOSE OF SORTING COMPUTE BUFFERS FOR SPATIAL HASHING. THIS WAS FOUND BY THE SOURCE CODE FROM SEBASTIAN LAGUE, WHICH CAN BE FOUND HERE: https://github.com/SebLague/Fluid-Sim
-
+//***************************************************************************************************************************************************************************************************************************************************************
+// READ ME: CODE IN THIS SCRIPT WAS NOT DESIGNED BY ME AND WAS USED FOR THE PURPOSE OF SORTING COMPUTE BUFFERS FOR SPATIAL HASHING. CREDIT GOES TO SEBASTIAN LAGUE, WHICH THE SOURCE CODE USED CAN BE FOUND HERE: https://github.com/SebLague/Fluid-Sim *********
+//***************************************************************************************************************************************************************************************************************************************************************
 
 struct Entry
 {

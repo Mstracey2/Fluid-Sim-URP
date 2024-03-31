@@ -20,7 +20,7 @@ public class MouseUI : SetSliderValue
 
     public void UpdateRadius()
     {
-        mouseMover.Radius = slider.value;
+        mouseMover.Radius(slider.value);
         SetValueFromSlider();
     }
 

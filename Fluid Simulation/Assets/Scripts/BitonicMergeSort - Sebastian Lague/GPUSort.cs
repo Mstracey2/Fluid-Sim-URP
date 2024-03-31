@@ -1,6 +1,10 @@
 using UnityEngine;
 using static UnityEngine.Mathf;
 
+//***************************************************************************************************************************************************************************************************************************************************************
+// READ ME: CODE IN THIS SCRIPT WAS NOT DESIGNED BY ME AND WAS USED FOR THE PURPOSE OF SORTING COMPUTE BUFFERS FOR SPATIAL HASHING. CREDIT GOES TO SEBASTIAN LAGUE, WHICH THE SOURCE CODE USED CAN BE FOUND HERE: https://github.com/SebLague/Fluid-Sim *********
+//***************************************************************************************************************************************************************************************************************************************************************
+
 public class GPUSort
 {
     int sortKernel;
