@@ -2,15 +2,25 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+/*SPH RENDERING
+ * 
+ * Script that holds the primary functionality for the SPH particle gradient and box rendering.
+ * 
+ * Holds functionality to produce colour gradients to be sampled in the shader.
+ * 
+ */
+
 public class SPHRendering : MonoBehaviour
 {
+    #region Variables
     LineRenderer lineRend;
+
+    public Transform transRef;  //centre box reference
 
     [Header("Particle Rendering")]
     public Mesh particleMesh;
     public Material material;
-    //public Gradient colourGradient;
-    public int resolution;
+    public int resolution;  //resolution of colour sampling
 
     Color[] colourMap;
     Texture2D texture;
@@ -21,7 +31,9 @@ public class SPHRendering : MonoBehaviour
 
     private ComputeBuffer argsRendRef;
 
+    #endregion
 
+    #region frameSteps
     private void Awake()
     {
         lineRend = GetComponent<LineRenderer>();
@@ -38,14 +50,18 @@ public class SPHRendering : MonoBehaviour
         }
 
     }
+    #endregion
 
-    public Transform transRef;
+    /// <summary>
+    /// Creates a pattern to produce a box with the line renderer
+    /// </summary>
     public void CalculateBoxVertices()
     {
         var trans = transRef;
         var min = trans.localPosition - trans.localScale * 0.5f;
         var max = trans.localPosition + trans.localScale * 0.5f;
 
+        //position pattern
         lineRend.SetPosition(0, new Vector3(min.x, min.y, min.z));
         lineRend.SetPosition(1, new Vector3(min.x, min.y, max.z));
         lineRend.SetPosition(3, new Vector3(min.x, max.y, min.z));
@@ -67,9 +83,11 @@ public class SPHRendering : MonoBehaviour
 
     public void ProduceColourGradientMap(Gradient gradient)
     {
+        //texture setup
         texture = new Texture2D(resolution, 1);
         texture.wrapMode = TextureWrapMode.Clamp;
         texture.filterMode = FilterMode.Bilinear;
+
         colourMap = new Color[resolution];
         for (int i = 0; i < colourMap.Length; i++)
         {
@@ -99,6 +117,7 @@ public class SPHRendering : MonoBehaviour
         return argsBuffer;
     }
 
+    #region Set GPU Variables
     public void SetShaderFloat(string variable, float value)
     {
         material.SetFloat(variable, value);
@@ -107,5 +126,5 @@ public class SPHRendering : MonoBehaviour
     {
         material.SetBuffer(ParticlesBufferProperty, particleBuffer);
     }
-
+    #endregion
 }

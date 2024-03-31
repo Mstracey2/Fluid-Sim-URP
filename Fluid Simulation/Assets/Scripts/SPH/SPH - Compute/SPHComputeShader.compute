@@ -11,6 +11,7 @@
 struct Particle {
 	float3 pressure;
 	float2 density;
+    float3 viscosity;
     float3 external;
 	float3 velocity;
 	float3 position;
@@ -412,11 +413,11 @@ void CalculateViscosity(uint id : SV_DispatchThreadID)
     }
     if (staticFluidMultipliers)
     {
-        _particles[id.x].velocity += (viscosityForce * _particles[id.x].staticViscosityMulti) * timestep;
+        _particles[id.x].viscosity = (viscosityForce * _particles[id.x].staticViscosityMulti) * timestep;
     }
     else
     {
-        _particles[id.x].velocity += (viscosityForce * viscosityMulti) * timestep;
+        _particles[id.x].viscosity = (viscosityForce * viscosityMulti) * timestep;
     }
 
 }
@@ -428,6 +429,8 @@ void ApplyForces(uint id : SV_DispatchThreadID)
     
     _particles[id.x].velocity += _particles[id.x].pressure ;
 
+    _particles[id.x].velocity += _particles[id.x].viscosity;
+    
     _particles[id.x].position += (_particles[id.x].velocity) * timestep;
     DetectBounds(id.x);
      

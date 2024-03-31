@@ -39,6 +39,7 @@ Shader "Unlit/GradientParticles"
             {
                 float3 pressure;
                 float2 density;
+                float3 viscosity;
                 float3 external;
                 float3 velocity;
                 float3 position;
@@ -57,6 +58,7 @@ Shader "Unlit/GradientParticles"
             Texture2D<float4> ColourMap;
             SamplerState linear_clamp_sampler;
             float gradientChoice;
+
             struct VertexInput
             {
                 float4 position : POSITION;

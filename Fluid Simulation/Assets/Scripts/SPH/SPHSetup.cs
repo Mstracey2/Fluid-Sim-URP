@@ -33,10 +33,10 @@ public class SPHSetup : MonoBehaviour
                     Particle p = new Particle
                     {
                         position = spawnPos,
-                        staticDensityTarget = data.densityTarget,
-                        staticPressureMulti = data.pressureForce,
-                        staticNearPressureMulti = data.nearPressureForce,
-                        staticViscosityMulti = data.viscosity,
+                        defaultDensityTarget = data.densityTarget,
+                        defaultPressureMulti = data.pressureForce,
+                        defaultNearPressureMulti = data.nearPressureForce,
+                        defaultViscosityMulti = data.viscosity,
                         colour = new Vector3(data.colour.r,data.colour.g,data.colour.b) 
                     };
 
@@ -80,10 +80,10 @@ public class SPHSetup : MonoBehaviour
             Particle p = new Particle
             {
                 position = spawnCenter[randomized],
-                staticDensityTarget = particlePresets[randomized].densityTarget,
-                staticPressureMulti = particlePresets[randomized].pressureForce,
-                staticNearPressureMulti = particlePresets[randomized].nearPressureForce,
-                staticViscosityMulti = particlePresets[randomized].viscosity,
+                defaultDensityTarget = particlePresets[randomized].densityTarget,
+                defaultPressureMulti = particlePresets[randomized].pressureForce,
+                defaultNearPressureMulti = particlePresets[randomized].nearPressureForce,
+                defaultViscosityMulti = particlePresets[randomized].viscosity,
                 colour = new Vector3(particlePresets[randomized].colour.r, particlePresets[randomized].colour.g, particlePresets[randomized].colour.b)
             };
             particleList.Add(p);
