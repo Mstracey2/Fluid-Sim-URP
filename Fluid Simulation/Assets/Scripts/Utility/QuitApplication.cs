@@ -5,9 +5,15 @@ using UnityEngine;
 public class QuitApplication : MonoBehaviour
 {
     [SerializeField] private SPH sim;
+
     public void QuitGame()
     {
-        sim.ReleaseBuffers();
         Application.Quit();
+    }
+
+    private void OnApplicationQuit()
+    {
+        //To avoid crashing, the buffers must be released.
+        sim.ReleaseBuffers();
     }
 }
