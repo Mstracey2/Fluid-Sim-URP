@@ -7570,7 +7570,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   variable: 13
-  smoothParticleHydro: {fileID: 1392038046}
+  sim: {fileID: 1392038046}
 --- !u!114 &748818650
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -9609,7 +9609,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   variable: 8
-  smoothParticleHydro: {fileID: 1392038046}
+  sim: {fileID: 1392038046}
   mouseMover: {fileID: 754886515}
   mouseEvent:
     m_PersistentCalls:
@@ -10710,7 +10710,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   variable: 4
-  smoothParticleHydro: {fileID: 1392038046}
+  sim: {fileID: 1392038046}
 --- !u!1 &1074139964
 GameObject:
   m_ObjectHideFlags: 0
@@ -11674,7 +11674,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   variable: 1
-  smoothParticleHydro: {fileID: 1392038046}
+  sim: {fileID: 1392038046}
 --- !u!1 &1161306028
 GameObject:
   m_ObjectHideFlags: 0
@@ -14032,7 +14032,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   variable: 11
-  smoothParticleHydro: {fileID: 1392038046}
+  sim: {fileID: 1392038046}
 --- !u!114 &1325783690
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -14656,7 +14656,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   variable: 6
-  smoothParticleHydro: {fileID: 1392038046}
+  sim: {fileID: 1392038046}
   mouseMover: {fileID: 754886515}
   mouseEvent:
     m_PersistentCalls:
@@ -15015,11 +15015,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bc1796ccca9ee444d932cc3b709f93b3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  transRef: {fileID: 1624281822}
   particleMesh: {fileID: 10207, guid: 0000000000000000e000000000000000, type: 0}
   material: {fileID: 2100000, guid: dc5415964d9b57c449ff53ad984103c6, type: 2}
   resolution: 50
   showSpheres: 1
-  transRef: {fileID: 1624281822}
 --- !u!114 &1392038050
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -16739,7 +16739,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   variable: 2
-  smoothParticleHydro: {fileID: 1392038046}
+  sim: {fileID: 1392038046}
 --- !u!1 &1500933233
 GameObject:
   m_ObjectHideFlags: 0
@@ -18338,7 +18338,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   variable: 0
-  smoothParticleHydro: {fileID: 1392038046}
+  sim: {fileID: 1392038046}
 --- !u!1 &1596138129
 GameObject:
   m_ObjectHideFlags: 0
@@ -20522,7 +20522,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   variable: 3
-  smoothParticleHydro: {fileID: 1392038046}
+  sim: {fileID: 1392038046}
 --- !u!224 &1730947348 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 3828830068529146567, guid: 7beade073c57955428c9f454e67e9b8a,
@@ -24834,7 +24834,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   variable: 7
-  smoothParticleHydro: {fileID: 1392038046}
+  sim: {fileID: 1392038046}
 --- !u!1 &2141519715
 GameObject:
   m_ObjectHideFlags: 0
